@@ -10,6 +10,11 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The documentation build now locks `http-cache-semantics@4.3.0` and audits its graph without the temporary advisory exception.**
+  The newer dependency clears the high severity npm audit finding. The website audit continues to fail for any high or critical finding, incomplete report, or failed audit process.
+
 ## [8.0.0] - 2026-10-09
 
 ### Added

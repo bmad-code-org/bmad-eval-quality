@@ -40,8 +40,8 @@ jobs:
         run: npm ci
 
       # Both lockfiles, from one invocation: `eval-quality.config.json`'s
-      # `licences` section names them, carries the allowlist, and carries the
-      # website graph's own policy and its one scoped exception.
+      # `licences` section names them and carries the allowlist and website
+      # graph's own licence policy.
       - name: Licence scan (every lockfile the gate configuration names)
         run: npm run check:licences
 
