@@ -59,7 +59,6 @@ reviews:
     - ".github/**"
     - "scripts/audit-website.mjs"
     - "scripts/audit-website.test.mjs"
-    - "website/package-lock.json"
     - ".husky/**"
     - "src/**"
     - "tests/**"
