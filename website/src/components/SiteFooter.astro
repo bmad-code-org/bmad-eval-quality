@@ -1,0 +1,173 @@
+---
+const COLUMNS = [
+	{
+		heading: 'eval-quality',
+		links: [
+			{ href: '/tutorials/getting-started/', label: 'Get started' },
+			{
+				href: '/explanation/behavioral-evaluation-contracts/',
+				label: 'How it works',
+			},
+			{
+				href: '/how-to/author-behavioral-contracts/',
+				label: 'Full walkthrough',
+			},
+			{ href: '/reference/cli-commands/', label: 'CLI reference' },
+		],
+	},
+	{
+		heading: 'BMad',
+		links: [
+			{ href: 'https://docs.bmad-method.org/', label: 'BMad Method' },
+			{
+				href: 'https://bmad-builder-docs.bmad-method.org/',
+				label: 'BMad Builder',
+			},
+			{
+				href: 'https://cis-docs.bmad-method.org/',
+				label: 'Creative Intelligence Suite',
+			},
+			{
+				href: 'https://game-dev-studio-docs.bmad-method.org/',
+				label: 'Game Dev Studio',
+			},
+		],
+	},
+	{
+		heading: 'Community',
+		links: [
+			{
+				href: 'https://github.com/bmad-code-org/bmad-eval-quality',
+				label: 'GitHub',
+			},
+			{ href: 'https://www.npmjs.com/package/eval-quality', label: 'npm' },
+			{ href: 'https://discord.gg/gk8jAdXWmj', label: 'Discord' },
+			{ href: 'https://youtube.com/@BMadCode', label: 'YouTube' },
+		],
+	},
+]
+
+const BOTTOM = [
+	'© 2026 BMad Code, LLC',
+	'Apache-2.0 licensed',
+	'BMad is a trademark of BMad Code, LLC',
+]
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+const href = (link: string) => (link.startsWith('/') ? `${base}${link}` : link)
+---
+
+<div class="bmad-footer">
+  <div class="inner">
+  <p class="brand"><a href="https://www.bmadcode.com">BMad Code</a></p>
+  <p class="tagline">
+    Compile evaluation contracts and score their ability to catch known defects.
+  </p>
+
+  <div class="cols">
+    {
+      COLUMNS.map((col) => (
+        <nav aria-labelledby={`footer-${col.heading.toLowerCase().replace(/\s+/g, '-')}`}>
+          <p class="col-title" id={`footer-${col.heading.toLowerCase().replace(/\s+/g, '-')}`}>
+            {col.heading}
+          </p>
+          {col.links.map((link) => (
+            <a href={href(link.href)}>{link.label}</a>
+          ))}
+        </nav>
+      ))
+    }
+  </div>
+
+  <p class="bottom">{BOTTOM.map((line) => <span>{line}</span>)}</p>
+  </div>
+</div>
+
+<style>
+
+  .bmad-footer {
+    padding-block: clamp(2.8rem, 5vw, 3.6rem) 2.2rem;
+    padding-inline: var(--sl-content-pad-x);
+    background: var(--bmad-dark, #111418);
+    color: var(--bmad-dark-muted, #a2acb9);
+  }
+
+  :global(:root[data-theme='dark']) .bmad-footer {
+    background: var(--bmad-dark-2, #1a1e24);
+    border-top: 1px solid var(--bmad-dark-line, #2e353e);
+  }
+
+  .inner {
+    max-width: var(--sl-content-width);
+    margin-inline: var(--sl-content-margin-inline, auto);
+  }
+
+  .brand {
+    margin: 0;
+  }
+
+  .brand a {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .tagline {
+    margin: 0.9rem 0 0;
+    max-width: 46ch;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: clamp(2.2rem, 4vw, 3rem);
+  }
+
+  .cols .col-title {
+    margin: 0 0 0.9rem;
+    font-family: var(--bmad-mono, ui-monospace, monospace);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #ffffff;
+  }
+
+  .cols a {
+    display: block;
+    padding: 0.28rem 0;
+    font-size: 0.9375rem;
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .cols a:hover {
+    color: #ffffff;
+  }
+
+  .bottom {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.4rem;
+    margin: clamp(2.2rem, 4vw, 3rem) 0 0;
+    padding-top: 1.3rem;
+    border-top: 1px solid var(--bmad-dark-line, #2e353e);
+    font-family: var(--bmad-mono, ui-monospace, monospace);
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+    color: #8c96a3;
+  }
+
+  @media (max-width: 32rem) {
+    .cols {
+      grid-template-columns: 1fr;
+      gap: 1.9rem;
+    }
+  }
+</style>

@@ -10,6 +10,12 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the documentation site to the BMad Core design: Archivo body text, Instrument Serif titles, IBM Plex Mono labels, light and dark palettes, compact navigation, square controls, and a shared BMad footer.
+  Kept eval-quality's guides, search, navigation, and Apache-2.0 licence details.
+- Included website source in automated PR reviews.
+
 ### Fixed
 
 - **The documentation build now locks `http-cache-semantics@4.3.0` and audits its graph without the temporary advisory exception.**

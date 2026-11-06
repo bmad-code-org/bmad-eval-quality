@@ -63,6 +63,7 @@ reviews:
     - "src/**"
     - "tests/**"
     - "docs/**"
+    - "website/**"
     - "README.md"
     - "CONTRIBUTING.md"
     - "SECURITY.md"
@@ -78,6 +79,9 @@ reviews:
 
     # Exclude generated output, local tooling, planning artifacts, and noise.
     - "!node_modules/**"
+    - "!website/node_modules/**"
+    - "!website/.astro/**"
+    - "!website/package-lock.json"
     - "!dist/**"
     - "!coverage/**"
     - "!package-lock.json"

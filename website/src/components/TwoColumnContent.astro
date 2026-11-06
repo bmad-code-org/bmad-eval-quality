@@ -1,0 +1,10 @@
+---
+import Default from '@astrojs/starlight/components/TwoColumnContent.astro'
+import SiteFooter from './SiteFooter.astro'
+---
+
+<Default>
+  <slot name="right-sidebar" slot="right-sidebar" />
+  <slot />
+  <SiteFooter />
+</Default>

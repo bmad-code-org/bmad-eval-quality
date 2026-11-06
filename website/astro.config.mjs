@@ -50,6 +50,7 @@ export default defineConfig({
 		}),
 		starlight({
 			title: 'eval-quality',
+			favicon: '/favicon.svg',
 			tagline:
 				'Compile disciplined Behavioral Evaluation Contracts and score their ability to catch known defects.',
 			defaultLocale: 'root',
@@ -62,10 +63,7 @@ export default defineConfig({
 			],
 			lastUpdated: true,
 			head: [
-				// Inter 400/600, Space Grotesk 700 and JetBrains Mono 400 used to arrive
-				// through @fontsource packages, which ship the faces under OFL-1.1 and so
-				// fail AD-25's allowlist. Google Fonts serves the same four faces without
-				// adding a dependency. custom.css still names the families.
+				// Serve fonts without adding dependencies outside AD-25's licence allowlist.
 				{
 					tag: 'link',
 					attrs: {
@@ -85,7 +83,7 @@ export default defineConfig({
 					tag: 'link',
 					attrs: {
 						rel: 'stylesheet',
-						href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400&family=Space+Grotesk:wght@700&display=swap',
+						href: 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap',
 					},
 				},
 				{
@@ -181,6 +179,9 @@ export default defineConfig({
 			disable404Route: true,
 			components: {
 				Header: './src/components/Header.astro',
+				SiteTitle: './src/components/SiteTitle.astro',
+				PageTitle: './src/components/PageTitle.astro',
+				TwoColumnContent: './src/components/TwoColumnContent.astro',
 				MobileMenuFooter: './src/components/MobileMenuFooter.astro',
 			},
 			tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
