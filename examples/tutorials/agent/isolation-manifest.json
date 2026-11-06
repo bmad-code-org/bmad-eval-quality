@@ -10,7 +10,7 @@
   "conditionArm": "mutated",
   "contractDigest": "sha256:662ddc3c5d8aeba75c70cff507eb2864b890a64738c8fef5237d12f1193ac382",
   "contractId": "tutorial-release-notes-agent",
-  "evaluatorConfigurationDigest": "sha256:e3ae93e79b1a94912728a0273781274fb7826c4d9d3ebd87dcf3131e1d4c1efc",
+  "evaluatorConfigurationDigest": "sha256:77d257956a5d69127deb106ee4c1f5764e284840e9b8eff0158fd1f83142631a",
   "forbiddenInputAccounting": {
     "builder-transcript": {
       "note": null,

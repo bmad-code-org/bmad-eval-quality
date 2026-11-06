@@ -80,15 +80,15 @@
   "directions": [
     {
       "oracleId": "O-001",
-      "text": "The body title value you sent to the patch note endpoint (with the supplied path id and the supplied body title), compared with its note.title field from the get note endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One update followed by one independent read of the same note through the separate read operation. An update reporting success whose title the later read does not return. The update operation's own response is not evidence that it persisted: that response can be generated from a value that was never written is treated as a defect."
+      "text": "Check for equality. Evidence: the body title value you sent to the patch note endpoint (with the supplied path id and the supplied body title), compared with its note.title field from the get note endpoint (with the supplied path id). The declared polarity expects this relation to hold. One update followed by one independent read of the same note through the separate read operation. An update reporting success whose title the later read does not return. The update operation's own response is not evidence that it persisted: that response can be generated from a value that was never written is treated as a defect."
     },
     {
       "oracleId": "O-002",
-      "text": "The patch note endpoint (with the supplied path id and the supplied body title): its ok field and its transport status is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The update call's status and its success indicator, together. A body claiming success under a failing status, or the reverse is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the patch note endpoint (with the supplied path id and the supplied body title): its ok field and its transport status. The declared polarity expects this relation to hold. The update call's status and its success indicator, together. A body claiming success under a failing status, or the reverse is treated as a defect."
     },
     {
       "oracleId": "O-003",
-      "text": "The patch note endpoint (with the supplied path id and the supplied body title): its error field and its note field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The update response taken as a whole. A success carrying a diagnostic field beside the success flag, or a note payload carrying only the fields the caller changed is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the patch note endpoint (with the supplied path id and the supplied body title): its error field and its note field. The declared polarity expects this relation to hold. The update response taken as a whole. A success carrying a diagnostic field beside the success flag, or a note payload carrying only the fields the caller changed is treated as a defect."
     },
     {
       "oracleId": "O-004",
@@ -96,7 +96,7 @@
     },
     {
       "oracleId": "O-005",
-      "text": "The patch note endpoint (with a malformed body tags value): its ok field and its transport status is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One update whose tags value violates the declared type for that key. A malformed body accepted with status 200 instead of rejected with 400 is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the patch note endpoint (with a malformed body tags value): its ok field and its transport status. The declared polarity expects this relation to hold. One update whose tags value violates the declared type for that key. A malformed body accepted with status 200 instead of rejected with 400 is treated as a defect."
     }
   ],
   "parentDigest": null,

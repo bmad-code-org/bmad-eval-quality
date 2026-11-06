@@ -160,7 +160,7 @@ Three things hold across runs no matter what the model emits, and all three are 
 What does not hold is the prose.
 There is no semantic operator in this library, and no operator asks a model whether an answer is good.
 The closed set is `equality`, `deep-equality`, `containment`, `existence`, `absence`, `regex`, `set-membership`, `ordering`, `count-tolerance`, `shape`, `covers-by-key`, the connectives `all`, `any`, `not`, and the quantifiers `for-all` and `for-any` (AD-4).
-`regex` is the ECMA-262 dialect, always fully anchored, with backreferences and lookbehind rejected at compile time under `malformed-operator-expression`.
+`regex` uses the bounded ECMA-262 subset described in the [CLI reference](/reference/cli-commands/#bounded-regex-matching). Compile requires whole-expression anchoring and reports unsupported syntax as `malformed-operator-expression`.
 Judgement about wording belongs in a rubric, declared in the contract's `rubrics` field, and a contract with no rubric produces no judge call at all. Obtaining judgments from a model or human evaluator is the caller's responsibility; the evaluation contract scores the resulting evidence.
 
 ### O-004: the empty collection that certifies nothing

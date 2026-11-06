@@ -7,7 +7,7 @@
   },
   "conditionArm": "independent",
   "contractDigest": "sha256:6c06216318aa9e08e88ddad336de59009136c4841c076d2d64d94eaa1e42e3a4",
-  "evaluatorConfigurationDigest": "sha256:ac967060761c5ad1e4ff17037c52abd2a878b17947df919f9064c50b8a1b966d",
+  "evaluatorConfigurationDigest": "sha256:fae954b19f5ee17264d953bd1a9c8e2e6642ce0e4afe1c7126820f2190b509c3",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -419,6 +419,6 @@
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 8,
-  "sealedBriefDigest": "sha256:47836bbabae9eba12c3a0e1cb84ccb0600056af16d3794b091ab12366054b6b4",
+  "sealedBriefDigest": "sha256:064074fa78eece851091a823f70cdc422fc8aeec1e475bd13ccaa669fa76fe5c",
   "trialIndex": 1
 }

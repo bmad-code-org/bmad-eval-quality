@@ -7,7 +7,7 @@
   },
   "conditionArm": "mutated",
   "contractDigest": "sha256:6c06216318aa9e08e88ddad336de59009136c4841c076d2d64d94eaa1e42e3a4",
-  "evaluatorConfigurationDigest": "sha256:969e7f2e34af34bbfddb07187e520d492c5ccecd6d72dac122f2306054b4b989",
+  "evaluatorConfigurationDigest": "sha256:07a304f5246383fc30321476b5170d039e1e4156986c769c5fc50939f86d968f",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -65,7 +65,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:f3d696a910547712b78f62924e03ca0a90d0c17fcea61d3003cf71e1765b0fbc",
+    "digest": "sha256:1a73df193a4ff678dee7a3d51a5f0719e581c2235f2a001fed977635a19690f0",
     "path": "examples/tutorials/workflow/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -419,6 +419,6 @@
   "revisionCount": 0,
   "runId": "workflow-run-1",
   "schemaVersion": 8,
-  "sealedBriefDigest": "sha256:47836bbabae9eba12c3a0e1cb84ccb0600056af16d3794b091ab12366054b6b4",
+  "sealedBriefDigest": "sha256:064074fa78eece851091a823f70cdc422fc8aeec1e475bd13ccaa669fa76fe5c",
   "trialIndex": 1
 }

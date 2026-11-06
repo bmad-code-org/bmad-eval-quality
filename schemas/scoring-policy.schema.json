@@ -76,7 +76,7 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 9007199254740991,
-      "description": "AD-4: \"a match-step budget from the scoring policy whose breach is a fault, not an outcome state.\" The budget bounds a pure, static, pre-execution complexity estimate over the declared pattern and the candidate string length, never a literal engine-internal step count, and that length is whatever the system under test returned, which the contract author does not control. The structural nested-quantifier rejection stays unconditional and independent of this value, so a generous ceiling here does not weaken that real backstop. The published default artifact carries 1000000."
+      "description": "AD-4: a regex budget breach is a budget-exhausted fault. The budget bounds both a preliminary quantifier-count times input-length estimate and interpreted matching work: node visits, repetition iterations, and endpoint-set merges. Parsing is separately bounded to 4096 source code units and 64 group levels. Native RegExp evaluates only one-character atoms and anchors. Nested quantifiers remain rejected unconditionally. The published default artifact carries 1000000."
     }
   },
   "required": [

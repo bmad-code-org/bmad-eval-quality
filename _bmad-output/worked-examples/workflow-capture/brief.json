@@ -137,31 +137,31 @@
   "directions": [
     {
       "oracleId": "O-001",
-      "text": "The create thing endpoint (with the supplied body name): its error field, its id field, and its ok field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One create call for one thing. A create reporting success with no identifier, or with a diagnostic beside it is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the create thing endpoint (with the supplied body name): its error field, its id field, and its ok field. The declared polarity expects this relation to hold. One create call for one thing. A create reporting success with no identifier, or with a diagnostic beside it is treated as a defect."
     },
     {
       "oracleId": "O-002",
-      "text": "The body name value you sent to the create thing endpoint (with the supplied body name), compared with its thing.name field from the get thing endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One create followed by one read at the identifier it returned. A create whose later read answers with a name the call never sent is treated as a defect."
+      "text": "Check for equality. Evidence: the body name value you sent to the create thing endpoint (with the supplied body name), compared with its thing.name field from the get thing endpoint (with the supplied path id). The declared polarity expects this relation to hold. One create followed by one read at the identifier it returned. A create whose later read answers with a name the call never sent is treated as a defect."
     },
     {
       "oracleId": "O-003",
-      "text": "Its ok field from the create thing endpoint (with a malformed body name value), its ok field from the get thing endpoint (with a malformed path id value), and its ok field from the reset things endpoint (with a malformed body seedName value) is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One call per operation whose parameter carries the wrong JSON type, with the check stating the requirement. An operation answering success over a type-violating parameter is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: its ok field from the create thing endpoint (with a malformed body name value), its ok field from the get thing endpoint (with a malformed path id value), and its ok field from the reset things endpoint (with a malformed body seedName value). The declared polarity expects this relation to hold. One call per operation whose parameter carries the wrong JSON type, with the check stating the requirement. An operation answering success over a type-violating parameter is treated as a defect."
     },
     {
       "oracleId": "O-004",
-      "text": "The body name value you sent to the create thing endpoint (with the supplied body name), compared with the path id value you sent to the get thing endpoint (with the supplied path id) is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The two parameters the sibling group names. A call sending one of the pair and not the other is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the body name value you sent to the create thing endpoint (with the supplied body name), compared with the path id value you sent to the get thing endpoint (with the supplied path id). The declared polarity expects this relation to hold. The two parameters the sibling group names. A call sending one of the pair and not the other is treated as a defect."
     },
     {
       "oracleId": "O-005",
-      "text": "The get thing endpoint (with the supplied path id): its ok field and its thing field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One read at a known identifier. A read reporting success and returning no record is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the get thing endpoint (with the supplied path id): its ok field and its thing field. The declared polarity expects this relation to hold. One read at a known identifier. A read reporting success and returning no record is treated as a defect."
     },
     {
       "oracleId": "O-006",
-      "text": "The reset things endpoint (with the supplied body seedName): its ok field and its seededName field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One reset call. A reset reporting success and naming nothing it seeded is treated as a defect."
+      "text": "Check that every declared condition holds together. Evidence: the reset things endpoint (with the supplied body seedName): its ok field and its seededName field. The declared polarity expects this relation to hold. One reset call. A reset reporting success and naming nothing it seeded is treated as a defect."
     },
     {
       "oracleId": "O-007",
-      "text": "The body seedName value you sent to the reset things endpoint (with the supplied body seedName), compared with its thing.name field from the get thing endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One reset followed by one read of the record it seeded. A reset reporting success over a store it left as it found it is treated as a defect."
+      "text": "Check for equality. Evidence: the body seedName value you sent to the reset things endpoint (with the supplied body seedName), compared with its thing.name field from the get thing endpoint (with the supplied path id). The declared polarity expects this relation to hold. One reset followed by one read of the record it seeded. A reset reporting success over a store it left as it found it is treated as a defect."
     }
   ],
   "parentDigest": null,

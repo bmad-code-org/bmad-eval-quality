@@ -10,6 +10,19 @@ body.
 
 ## [Unreleased]
 
+## [9.0.0] - 2026-11-06
+
+### Changed
+
+- Regex source length is capped at 4096 UTF-16 code units and group nesting at 64 levels. Contracts exceeding these resource limits must split or simplify their patterns. The matching work counter can exhaust a budget that the previous estimate accepted. Lookahead, named captures and native legacy syntax retain their boolean semantics.
+
+### Fixed
+
+- Volatile array pointers resolve against the original document, including overlapping wildcards and duplicate declarations. State-reset selections retain original array indices and prune volatile descendants.
+- Regex matching uses a synchronous work-budgeted interpreter. Repeated alternatives and adjacent repetitions complete or raise `budget-exhausted`. Compile documents and enforces the bounded grammar, 4096-code-unit source limit and 64-level group limit.
+- CLI help explains that `--isolation-manifest` and `--evaluator-configuration` are required for a verdict. Their absence keeps exit 3.
+- Sealed directions state the relation before naming compound evidence fields, correcting agreement and shortening sentences.
+
 ## [8.0.1] - 2026-11-06
 
 ### Changed

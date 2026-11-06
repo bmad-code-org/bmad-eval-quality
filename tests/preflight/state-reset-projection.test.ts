@@ -14,7 +14,6 @@ import {
 } from '../../src/core/declared-inputs.ts'
 import {
 	PREFLIGHT_ARTIFACT_PATH,
-	projectObservation,
 	stateResetProjection,
 } from '../../src/core/preflight/projection.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
@@ -51,10 +50,7 @@ const select = operationOf(commandContract, isCommandOperation)
 
 const digestOf = (observation: ProbeObservation, operation: AnyOperation) =>
 	digestArtifact(
-		stateResetProjection(
-			projectObservation(observation, operation, PREFLIGHT_ARTIFACT_PATH),
-			operation,
-		),
+		stateResetProjection(observation, operation),
 		PREFLIGHT_ARTIFACT_PATH,
 	)
 
@@ -163,5 +159,45 @@ describe('the pointer read', () => {
 		).not.toBe(
 			digestOf(tool(whole, { result: jsonBody({ ok: true, x: 2 }) }), whole),
 		)
+	})
+})
+
+describe('state-reset pointers retain original coordinates', () => {
+	const read = (pointers: string[], volatilePointers: string[], value: any) => {
+		const declared = {
+			...search,
+			stateResetPointers: pointers,
+			volatilePointers,
+		}
+		return stateResetProjection(
+			tool(declared, { result: jsonBody(value) }),
+			declared,
+		) as any
+	}
+	it('selects the original element after preceding elements are pruned', () => {
+		expect(
+			read(['/items/2'], ['/items/0', '/items/1'], {
+				items: ['a', 'b', 'stable'],
+			}).body.selected,
+		).toEqual([{ pointer: '/items/2', found: true, value: 'stable' }])
+	})
+	it('prunes volatile descendants of a selected parent or whole document', () => {
+		const value = {
+			items: [
+				{ stable: 1, volatile: 'a' },
+				{ stable: 2, volatile: 'b' },
+			],
+		}
+		for (const pointers of [['/items'], ['']]) {
+			const result = read(pointers, ['/items/0', '/items/*/volatile'], value)
+			expect(result.body.selected[0].value).toEqual(
+				pointers[0] === '' ? { items: [{ stable: 2 }] } : [{ stable: 2 }],
+			)
+		}
+	})
+	it('preserves absent results for a selected volatile element', () => {
+		expect(
+			read(['/items/0'], ['/items/*'], { items: ['a'] }).body.selected,
+		).toEqual([{ pointer: '/items/0', found: false }])
 	})
 })

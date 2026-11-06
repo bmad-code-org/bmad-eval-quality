@@ -7,7 +7,7 @@
   },
   "conditionArm": "mutated",
   "contractDigest": "sha256:edfde75db27ba1d3a017265b9cf054f2731c1a3f046c5bbd67f61024ca3a99bd",
-  "evaluatorConfigurationDigest": "sha256:fe4f70ba3f8a346796ecccda074b587782f3239cab62513d23e64e92a5d195a5",
+  "evaluatorConfigurationDigest": "sha256:22223217020bcc8ce68f04a778565a895ce1009f63ef001aea20a9ddaf173140",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:383e733e0491f04c063c53d8e247749caf0ce7211e39c51ffc92fac15131a36f",
+    "digest": "sha256:cfa725fe74b96b567b62b4ebf6bbecdf73fc21e75a832eb066d9e0edba7f3b26",
     "path": "examples/tutorials/walkthrough/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -214,6 +214,6 @@
   "revisionCount": 0,
   "runId": "notes-run-1",
   "schemaVersion": 8,
-  "sealedBriefDigest": "sha256:d3a002c066914cde0be323f94de33ce9e630b56d085fbd8bde01ee5570c0b71a",
+  "sealedBriefDigest": "sha256:4e59bd15c2e3b28285d69ede11f60ae22070a50977740aac0aa3fafe2f16c029",
   "trialIndex": 1
 }

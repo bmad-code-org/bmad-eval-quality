@@ -125,11 +125,11 @@
   "runId": "skill-defect-run-0001",
   "schemaVersion": 4,
   "scoredProbeId": "P-001",
-  "scoringVersion": "sha256:88d44cb379a39eaece5d90a34202dab527cf799a3ca94f3d9eff9f3a14b28128",
+  "scoringVersion": "sha256:7d6b1644d9428dadabe24d7ad83daa5f80ed69e5e2bed28f955d6f5434712667",
   "scoringVersionInputs": {
     "contractSchemaVersion": 7,
     "corpusDigest": "sha256:000000000000000000000000000000000000000000000000000000000000001a",
-    "evaluatorConfigurationDigest": "sha256:03dfe2db5e731ee7bb0462c7e8fd35664ba2e2797ea1d0715a5e43d674576f66",
+    "evaluatorConfigurationDigest": "sha256:c0ae75704d17edaeb0b6abeeb1586da922a7e69bf3e1bac5f43a57665a7f68d4",
     "fixtureDigest": "sha256:c3428cb77cfdac9f6bb0a35f5ea72b7d569d79c1f90a6de786664acb24796f59",
     "mode": "contract-scoring",
     "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"
