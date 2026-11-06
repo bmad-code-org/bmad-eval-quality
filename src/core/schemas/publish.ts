@@ -1,5 +1,4 @@
 /** the published JSON Schema export: twelve self-contained documents. */
-import { z } from 'zod'
 import {
 	INTERCHANGE_ARTIFACT_KEYS,
 	INTERCHANGE_ARTIFACTS,
@@ -9,6 +8,7 @@ import {
 	CONSTRAINT_LEDGER,
 	type ConstraintLedgerEntry,
 } from './constraint-ledger.ts'
+import { schemaDocument } from './json-schema.ts'
 
 // Downstream of every schema module and the constraint ledger; no module
 // under `src/core/schemas/` may import it back, or the cycle fails at load
@@ -133,10 +133,22 @@ export const injectConstraint = (
 	// through the first alias would make the second trip the no-overwrite guard
 	// below on a keyword this very call just planted.
 	for (const site of new Set(sites as SchemaNode[])) {
-		for (const [keyword, value] of Object.entries(entry.disposition.keywords)) {
-			// An injection never overwrites: a keyword already present means the
-			// export changed under the ledger, and clobbering it would hide that.
-			if (keyword in site)
+		// Zod 4.6 emits fixed-tuple bounds itself. items:false already caps the
+		// tuple at prefixItems.length, so omit its identical maxItems bound.
+		// This keeps each published constraint independently testable by deletion.
+		const { keywords } = entry.disposition
+		if (
+			Array.isArray(site.prefixItems) &&
+			keywords.items === false &&
+			keywords.minItems === site.prefixItems.length &&
+			site.items === false &&
+			site.maxItems === keywords.minItems
+		) {
+			delete site.maxItems
+		}
+		for (const [keyword, value] of Object.entries(keywords)) {
+			// Matching scalar bounds satisfy the ledger. Conflicting bounds fail closed.
+			if (keyword in site && site[keyword] !== value)
 				throw unresolved(
 					entry,
 					`keyword "${keyword}" is already present at the site`,
@@ -157,7 +169,7 @@ export const injectConstraint = (
 export const publishedDocument = (
 	key: InterchangeArtifactKey,
 ): Record<string, unknown> => {
-	const exported = z.toJSONSchema(INTERCHANGE_ARTIFACTS[key].schema, {
+	const exported = schemaDocument(INTERCHANGE_ARTIFACTS[key].schema, {
 		io: 'output',
 	}) as Record<string, unknown>
 	// Cloned before injection so mutation never reaches objects Zod may retain

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
+import { schemaDocument } from '../../src/core/schemas/json-schema.ts'
 import { Direction } from '../../src/core/schemas/oracle.ts'
 import {
 	BoundElementPointer,
@@ -174,10 +174,10 @@ describe('the channel vocabularies, exported once and derived by name', () => {
 	// Enum order lands in the export and Story 1.5's drift check pins whatever
 	// ships, so the order is asserted rather than assumed.
 	it('exports the channel enum in declaration order', () => {
-		expect(z.toJSONSchema(EvidenceChannel, { io: 'input' }).enum).toEqual([
+		expect(schemaDocument(EvidenceChannel, { io: 'input' }).enum).toEqual([
 			...EVIDENCE_CHANNELS,
 		])
-		expect(z.toJSONSchema(TransportChannel, { io: 'input' }).enum).toEqual([
+		expect(schemaDocument(TransportChannel, { io: 'input' }).enum).toEqual([
 			...TRANSPORT_CHANNELS,
 		])
 	})

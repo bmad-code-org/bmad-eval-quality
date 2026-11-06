@@ -1,13 +1,13 @@
 ---
+import Search from 'virtual:starlight/components/Search'
+import SiteTitle from 'virtual:starlight/components/SiteTitle'
+import SocialIcons from 'virtual:starlight/components/SocialIcons'
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect'
 import config from 'virtual:starlight/user-config'
-import Search from '@astrojs/starlight/components/Search.astro'
-import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro'
-import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro'
-import SiteTitle from './SiteTitle.astro'
 
 const shouldRenderSearch =
 	config.pagefind ||
-	config.components.Search !== '@astrojs/starlight/components/Search.astro'
+	config.components.Search !== 'virtual:starlight/components/Search'
 ---
 <div class="header sl-flex">
 	<div class="title-wrapper sl-flex">

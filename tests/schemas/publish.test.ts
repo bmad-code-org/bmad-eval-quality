@@ -1,3 +1,4 @@
+import { schemaDocument } from '../../src/core/schemas/json-schema.ts'
 // The pure builder of the published JSON Schema export (Story 1.5, AC 1 and
 // AC 2): thirteen self-contained documents, `$id` synthesised, every `inject`
 // ledger entry applied at its stated address, and a loud failure on any
@@ -5,7 +6,6 @@
 // property it names is removed.
 
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import {
 	INTERCHANGE_ARTIFACT_KEYS,
 	INTERCHANGE_ARTIFACTS,
@@ -147,7 +147,7 @@ describe('the thirteen published documents (AC 1)', () => {
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(
 		'%s differs from the raw export by $id and its inject entries alone',
 		(key) => {
-			const raw = z.toJSONSchema(INTERCHANGE_ARTIFACTS[key].schema, {
+			const raw = schemaDocument(INTERCHANGE_ARTIFACTS[key].schema, {
 				io: 'output',
 			}) as Record<string, unknown>
 			const { $schema, ...rest } = structuredClone(raw)
@@ -221,20 +221,74 @@ describe('the ledger drives the injection, by stated address (AC 2)', () => {
 	)
 
 	it.each(INJECT_ENTRIES)(
-		'$id is absent from the raw export, so the keyword provably comes from the injection',
+		'$id agrees with any bounds already emitted by Zod',
 		(entry) => {
 			if (entry.disposition.kind !== 'inject')
 				throw new Error('not an injection')
-			const raw = z.toJSONSchema(
+			const raw = schemaDocument(
 				INTERCHANGE_ARTIFACTS[entry.location.artifact].schema,
 				{ io: 'output' },
 			) as Record<string, any>
 			const site = resolve(raw, entry)
 			expect(site, entry.id).toBeDefined()
-			for (const keyword of Object.keys(entry.disposition.keywords))
-				expect(site[keyword], `${entry.id} ${keyword}`).toBeUndefined()
+			for (const [keyword, value] of Object.entries(
+				entry.disposition.keywords,
+			)) {
+				if (entry.branch !== null) {
+					expect(site[keyword], `${entry.id} ${keyword}`).toEqual(value)
+				} else {
+					expect(site[keyword], `${entry.id} ${keyword}`).toBeUndefined()
+				}
+			}
 		},
 	)
+
+	it('accepts matching native tuple bounds and removes only the redundant cap', () => {
+		const entry = CONSTRAINT_LEDGER.find(
+			(item) => item.id === 'operator-arity-equality',
+		)!
+		const document = schemaDocument(
+			INTERCHANGE_ARTIFACTS['eval-contract'].schema,
+			{ io: 'output' },
+		) as Record<string, any>
+		const site = resolve(document, entry)
+		expect(site.minItems).toBe(2)
+		expect(site.maxItems).toBe(2)
+		expect(site.items).toBe(false)
+		injectConstraint(document, entry)
+		expect(site.minItems).toBe(2)
+		expect(site.items).toBe(false)
+		expect(site.maxItems).toBeUndefined()
+	})
+
+	it.each([1, 3])(
+		'refuses a native minItems of %s that conflicts with the ledger',
+		(bound) => {
+			const entry = CONSTRAINT_LEDGER.find(
+				(item) => item.id === 'operator-arity-equality',
+			)!
+			const document = schemaDocument(
+				INTERCHANGE_ARTIFACTS['eval-contract'].schema,
+				{ io: 'output' },
+			) as Record<string, any>
+			resolve(document, entry).minItems = bound
+			expect(() => injectConstraint(document, entry)).toThrow('already present')
+		},
+	)
+
+	it('preserves a stricter native maxItems bound', () => {
+		const entry = CONSTRAINT_LEDGER.find(
+			(item) => item.id === 'operator-arity-equality',
+		)!
+		const document = schemaDocument(
+			INTERCHANGE_ARTIFACTS['eval-contract'].schema,
+			{ io: 'output' },
+		) as Record<string, any>
+		const site = resolve(document, entry)
+		site.maxItems = 1
+		injectConstraint(document, entry)
+		expect(site.maxItems).toBe(1)
+	})
 
 	const brokenAddresses: [string, ConstraintLedgerEntry][] = [
 		[

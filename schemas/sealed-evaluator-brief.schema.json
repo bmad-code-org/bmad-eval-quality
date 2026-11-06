@@ -55,6 +55,7 @@
             ]
           },
           "observableSuccessCriterion": {
+            "description": "AD-19: what observable condition means this behaviour was met, which is not the nominated success indicator of any one operation. `null` is the shape `no-observable-success-criterion` fires on, and that code fires on exactly this condition and never on an empty oracle list.",
             "anyOf": [
               {
                 "type": "string"
@@ -62,8 +63,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "AD-19: what observable condition means this behaviour was met, which is not the nominated success indicator of any one operation. `null` is the shape `no-observable-success-criterion` fires on, and that code fires on exactly this condition and never on an empty oracle list."
+            ]
           },
           "requirementLinks": {
             "type": "array",

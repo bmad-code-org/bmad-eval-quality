@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@astrojs/check": "0.9.10",
-    "@astrojs/markdown-remark": "7.2.4",
+    "@astrojs/markdown-remark": "7.3.0",
     "@astrojs/sitemap": "3.7.3",
     "@astrojs/starlight": "0.41.7",
-    "astro": "7.2.9",
+    "astro": "7.3.3",
     "typescript": "5.9.3",
     "unist-util-visit": "5.1.0"
   },
@@ -21,5 +21,9 @@
     "esbuild@0.28.2": true,
     "fsevents@2.3.3": true,
     "sharp": false
+  },
+  "overrides": {
+    "vite": "8.2.4",
+    "zod": "4.6.7"
   }
 }

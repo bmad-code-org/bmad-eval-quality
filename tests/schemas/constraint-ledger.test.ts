@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import { INTERCHANGE_ARTIFACTS } from '../../src/core/schemas/artifact.ts'
 import {
 	CONSTRAINT_LEDGER,
@@ -11,6 +10,7 @@ import {
 	RELATION_VOCABULARY,
 	TUPLE_ARITY,
 } from '../../src/core/schemas/expression.ts'
+import { schemaDocument } from '../../src/core/schemas/json-schema.ts'
 import { BINDING_CHANNEL_NON_EMPTY } from '../../src/core/schemas/plan.ts'
 import { LEDGER_COUNTS } from './published-census.ts'
 
@@ -19,7 +19,7 @@ import { LEDGER_COUNTS } from './published-census.ts'
 const documents = Object.fromEntries(
 	Object.entries(INTERCHANGE_ARTIFACTS).map(([key, entry]) => [
 		key,
-		z.toJSONSchema(entry.schema, { io: 'input' }) as Record<string, any>,
+		schemaDocument(entry.schema, { io: 'input' }) as Record<string, any>,
 	]),
 )
 
@@ -255,12 +255,9 @@ describe('the premises the ledger rests on, verified against the export', () => 
 			expect(operands.prefixItems).toHaveLength(
 				Number(entry.disposition.keywords.minItems),
 			)
-			// The published schema would otherwise accept the one-operand and
-			// three-operand `equality` that Zod rejects, which is why arity is the
-			// ledger's largest entry class.
-			expect(operands.minItems).toBeUndefined()
-			expect(operands.maxItems).toBeUndefined()
-			expect(operands.items).toBeUndefined()
+			expect(operands.minItems).toBe(entry.disposition.keywords.minItems)
+			expect(operands.maxItems).toBe(entry.disposition.keywords.minItems)
+			expect(operands.items).toBe(false)
 		},
 	)
 

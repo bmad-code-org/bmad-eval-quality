@@ -1,16 +1,17 @@
 ---
-const { entry } = Astro.locals.starlightRoute
+const { entry, sidebar } = Astro.locals.starlightRoute
 
 const PAGE_TITLE_ID = '_top'
 
-const SECTIONS: Record<string, string> = {
-	tutorials: 'Tutorials',
-	'how-to': 'How-To Guides',
-	explanation: 'Explanation',
-	reference: 'Reference',
+function containsCurrent(entries: typeof sidebar): boolean {
+	return entries.some((item) =>
+		item.type === 'link' ? item.isCurrent : containsCurrent(item.entries),
+	)
 }
 
-const section = SECTIONS[entry.id.split('/')[0] ?? '']
+const section = sidebar.find(
+	(item) => item.type === 'group' && containsCurrent(item.entries),
+)?.label
 ---
 
 {section && <p class="eyebrow">{section}</p>}

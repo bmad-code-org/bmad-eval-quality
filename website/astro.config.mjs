@@ -63,6 +63,17 @@ export default defineConfig({
 			],
 			lastUpdated: true,
 			head: [
+				{
+					tag: 'link',
+					attrs: { rel: 'icon', href: `${basePath}favicon.ico`, sizes: 'any' },
+				},
+				{
+					tag: 'link',
+					attrs: {
+						rel: 'apple-touch-icon',
+						href: `${basePath}apple-touch-icon.png`,
+					},
+				},
 				// Serve fonts without adding dependencies outside AD-25's licence allowlist.
 				{
 					tag: 'link',
@@ -172,6 +183,28 @@ export default defineConfig({
 					label: 'Reference',
 					collapsed: false,
 					items: [{ autogenerate: { directory: 'reference' } }],
+				},
+				{
+					label: 'BMad Ecosystem',
+					items: [
+						{ label: 'BMad Method', link: 'https://docs.bmad-method.org/' },
+						{
+							label: 'Test Architect (TEA)',
+							link: 'https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/',
+						},
+						{
+							label: 'BMad Builder',
+							link: 'https://bmad-builder-docs.bmad-method.org/',
+						},
+						{
+							label: 'Creative Intelligence Suite',
+							link: 'https://cis-docs.bmad-method.org/',
+						},
+						{
+							label: 'Game Dev Studio',
+							link: 'https://game-dev-studio-docs.bmad-method.org/',
+						},
+					],
 				},
 			],
 			credits: false,

@@ -63,11 +63,9 @@ export type ConstraintLedgerEntry = {
 	readonly disposition: ConstraintDisposition
 }
 
-// Verified on the pin: z.tuple([a, b]) exports `prefixItems` alone (no
-// minItems, maxItems, or items), so the published schema accepts the
-// one-operand and three-operand `equality` that Zod rejects. Arity is the one
-// deliberate exception to the admit-rule, so it is the one place the export
-// must be repaired rather than relaxed.
+// Fixed tuples export their arity in Zod 4.6. The ledger verifies these bounds
+// and supplies any missing bound. publish.ts removes the redundant maxItems
+// only when items:false enforces the same cap at prefixItems.length.
 // AD-10's manifestation witness put an `Expression` on `Defect`, so the same
 // twelve tuples export into `probe.schema.json` too. `publish.ts` filters
 // injection by `entry.location.artifact`, so an eval-contract-addressed entry

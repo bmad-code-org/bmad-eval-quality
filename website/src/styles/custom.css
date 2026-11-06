@@ -696,7 +696,7 @@ main {
 @media (min-width: 40rem) {
 	.card-grid {
 		grid-template-columns: auto 1fr;
-		align-items: baseline;
+		align-items: stretch;
 	}
 }
 
@@ -705,11 +705,6 @@ main {
 	margin-top: 0;
 	padding-block: 1rem;
 	border-bottom: 1px solid var(--sl-color-hairline);
-}
-
-.sidebar-content .top-level > li > details > summary .large {
-	font-size: inherit;
-	font-weight: inherit;
 }
 
 @media (min-width: 72rem) {

@@ -1,3 +1,4 @@
+import { schemaDocument } from '../../src/core/schemas/json-schema.ts'
 // The registry is the data behind AD-24's prior-art rule and behind the
 // constraint ledger's generated lineage entries, so it is walked here rather
 // than trusted. Every assertion is written so it fails if the property it names
@@ -5,7 +6,7 @@
 // nothing, which is the failure round 2 of Story 1.3 found three times.
 
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
+import type { z } from 'zod'
 import {
 	INTERCHANGE_ARTIFACT_KEYS,
 	INTERCHANGE_ARTIFACTS,
@@ -45,7 +46,7 @@ const STRUCTURAL_SEED_PRIOR_ART = {
 } as const
 
 const documentOf = (schema: z.ZodType): Record<string, any> =>
-	z.toJSONSchema(schema, { io: 'input' }) as Record<string, any>
+	schemaDocument(schema, { io: 'input' }) as Record<string, any>
 
 // Every branch, not the first: a union whose branches disagree about lineage is
 // itself a defect this catches.
@@ -345,9 +346,9 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 		'%s exports identically in input and output mode, so no .default() is present',
 		(key, entry) => {
 			expect(
-				JSON.stringify(z.toJSONSchema(entry.schema, { io: 'output' })),
+				JSON.stringify(schemaDocument(entry.schema, { io: 'output' })),
 				key,
-			).toBe(JSON.stringify(z.toJSONSchema(entry.schema, { io: 'input' })))
+			).toBe(JSON.stringify(schemaDocument(entry.schema, { io: 'input' })))
 		},
 	)
 
