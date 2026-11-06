@@ -225,8 +225,7 @@ describe('parseCommandTargetPolicy', () => {
 		)
 	})
 
-	// Zod 4's strict-object and record loops skip an own `__proto__` without
-	// an issue, and `JSON.parse` creates exactly that key.
+	// Record keys need an explicit check; strict objects also report this key.
 	it('refuses an own __proto__ key at every level that can carry one', () => {
 		const valid = JSON.stringify(authorization()).slice(1, -1)
 		for (const [text, path] of [

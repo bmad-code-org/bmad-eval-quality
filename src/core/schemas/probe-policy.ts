@@ -297,7 +297,14 @@ function safeParseTargetPolicy<T>(
 			...(parsed.success ? [] : parsed.error.issues).flatMap((issue) => {
 				if (
 					issue.code !== 'unrecognized_keys' ||
-					!issue.keys.includes('__proto__')
+					!issue.keys.includes('__proto__') ||
+					!issues.some(
+						(explicit) =>
+							explicit.path.length === issue.path.length &&
+							explicit.path.every(
+								(segment, index) => segment === issue.path[index],
+							),
+					)
 				)
 					return [issue]
 				// Strict objects now report this key too. Keep our explicit issue once;

@@ -103,11 +103,14 @@ export const PositiveDecimalString = z
 		"The decimal-string format restricted to values greater than zero, for a ceiling where zero is not a ceiling. This is what carries the prior art's `exclusiveMinimum: 0` across AD-36's move of money from a JSON number to a string; without it that bound would be silently dropped by the retyping.",
 	)
 
-// Consistency Conventions: dates are RFC 3339 in UTC. z.iso.datetime() with no
-// options accepts a trailing "Z" and rejects a numeric offset, which is exactly
-// the convention; { offset: true } would accept both.
-export const Rfc3339Utc = z.iso
-	.datetime()
+// Keep the UTC timestamp language accepted by schema version 7, including
+// minute precision. Zod 4.6's default datetime check now requires seconds.
+const UTC_TIMESTAMP_PATTERN = new RegExp(
+	`^${z.regexes.date.source.slice(1, -1)}T(?:${z.regexes.time({}).source.slice(1, -1)}(?:Z))$`,
+)
+export const Rfc3339Utc = z
+	.stringFormat('datetime', UTC_TIMESTAMP_PATTERN)
+	.meta({ format: 'date-time' })
 	.describe('RFC 3339 timestamp in UTC. A numeric offset is not accepted.')
 
 /** the six JSON type names a declaration may name a key's type as. */

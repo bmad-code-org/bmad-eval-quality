@@ -21,7 +21,7 @@ body.
 - Updated Zod, Vite, Vitest, Astro, and URI parsing dependencies to patched versions after the CI security audit found vulnerable pins.
   The schema publisher keeps inline roots and nullable unions, accepts matching tuple bounds emitted by Zod, and rejects conflicting bounds.
   Target-policy parsing reports each forbidden prototype key once.
-  Waiver expiry timestamps require seconds, matching their declared RFC 3339 UTC format.
+  Existing UTC timestamps with minute precision remain accepted.
 
 - **The documentation build now locks `http-cache-semantics@4.3.0` and audits its graph without the temporary advisory exception.**
   The newer dependency clears the high severity npm audit finding. The website audit continues to fail for any high or critical finding, incomplete report, or failed audit process.
