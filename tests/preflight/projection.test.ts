@@ -236,3 +236,47 @@ describe('fixtureDigest', () => {
 		)
 	})
 })
+
+describe('original-coordinate volatile pruning', () => {
+	it('is invariant under duplicate and overlapping wildcard/index pointer order', () => {
+		const body = jsonBody({
+			items: [
+				{ stable: 'a', volatile: 1 },
+				{ stable: 'b', volatile: 2 },
+				{ stable: 'c', volatile: 3 },
+			],
+		})
+		const pointers = ['/items/0', '/items/1', '/items/*/volatile', '/items/0']
+		const expected = jsonBody({ items: [{ stable: 'c' }] })
+		for (let rotation = 0; rotation < pointers.length; rotation++) {
+			const order = [
+				...pointers.slice(rotation),
+				...pointers.slice(0, rotation),
+			]
+			expect(prune(body, order)).toEqual(expected)
+			expect(prune(body, order.reverse())).toEqual(expected)
+		}
+		expect(body).toEqual(
+			jsonBody({
+				items: [
+					{ stable: 'a', volatile: 1 },
+					{ stable: 'b', volatile: 2 },
+					{ stable: 'c', volatile: 3 },
+				],
+			}),
+		)
+	})
+
+	it('keeps nested deletions on their original array element', () => {
+		const body = jsonBody({
+			items: [{ field: 'volatile' }, { field: 'keep' }, { field: 'remove' }],
+		})
+		for (const order of [
+			['/items/0', '/items/2/field'],
+			['/items/2/field', '/items/0'],
+		])
+			expect(prune(body, order)).toEqual(
+				jsonBody({ items: [{ field: 'keep' }, {}] }),
+			)
+	})
+})

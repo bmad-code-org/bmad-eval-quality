@@ -2,8 +2,13 @@
  * Checks expression operands, regex constructs, quantifier use, and
  * reference-set resolution. Each check reports the first structural failure.
  */
+
 import { digestArtifact } from '../canonical/digest.ts'
 import { targetsDescribedChannel } from '../declared-inputs.ts'
+import {
+	parseBoundedRegex,
+	REGEX_SOURCE_LIMIT,
+} from '../evaluate/bounded-regex.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
@@ -443,9 +448,6 @@ export function checkOperandLegality(contract: EvalContract): void {
 
 // Rejected regex constructs.
 
-const BACKREFERENCE_PATTERN = /\\(?:[1-9][0-9]*|k<[^>]+>)/
-const LOOKBEHIND_PATTERN = /\(\?<[=!]/
-
 function isEscaped(pattern: string, index: number): boolean {
 	let backslashes = 0
 	for (
@@ -480,6 +482,8 @@ function hasTopLevelAlternation(pattern: string): boolean {
 }
 
 function regexRejection(pattern: string): string | null {
+	if (pattern.length > REGEX_SOURCE_LIMIT)
+		return `exceeds the regex source limit of ${REGEX_SOURCE_LIMIT} code units`
 	try {
 		new RegExp(pattern)
 	} catch {
@@ -493,8 +497,11 @@ function regexRejection(pattern: string): string | null {
 	) {
 		return 'is not anchored over the whole expression'
 	}
-	if (BACKREFERENCE_PATTERN.test(pattern)) return 'carries a backreference'
-	if (LOOKBEHIND_PATTERN.test(pattern)) return 'carries a lookbehind'
+	try {
+		parseBoundedRegex(pattern)
+	} catch (cause) {
+		return `is outside the bounded regex subset: ${String(cause)}`
+	}
 	return null
 }
 

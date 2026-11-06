@@ -1,8 +1,7 @@
 /**
  * The relation-keyed template: turns one oracle's `Direction` into the
  * `text` of one `BriefDirection`. It composes, in one fixed order, the
- * derived evidence-target references (`derived-reference.ts`), the relation's
- * verb phrase, the declared polarity, and the author-written `scope` and
+ * relation's claim, the derived evidence-target references (`derived-reference.ts`), the declared polarity, and the author-written `scope` and
  * `negativeDomain`. Each part is shaped into a standalone sentence (trimmed,
  * capitalized, one terminal mark); the author's own words are never split,
  * reordered, or rewritten.
@@ -49,11 +48,11 @@ function connectiveClaim(
 ): string {
 	switch (relation) {
 		case 'all':
-			return `${evidence} is asserted to satisfy every declared condition together.`
+			return `Check that every declared condition holds together. Evidence: ${evidence}.`
 		case 'any':
-			return `${evidence} is asserted to satisfy at least one declared condition.`
+			return `Check that at least one declared condition holds. Evidence: ${evidence}.`
 		case 'not':
-			return `${evidence} is asserted to fail the declared condition, not to satisfy it.`
+			return `Check that the declared condition fails. Evidence: ${evidence}.`
 	}
 }
 
@@ -62,8 +61,8 @@ function presenceClaim(
 	evidence: string,
 ): string {
 	return relation === 'existence'
-		? `${evidence} is asserted to be present.`
-		: `${evidence} is asserted to be absent.`
+		? `Check for presence. Evidence: ${evidence}.`
+		: `Check for absence. Evidence: ${evidence}.`
 }
 
 function comparisonClaim(
@@ -72,11 +71,11 @@ function comparisonClaim(
 ): string {
 	switch (relation) {
 		case 'equality':
-			return `${evidence} is asserted to be equal.`
+			return `Check for equality. Evidence: ${evidence}.`
 		case 'deep-equality':
-			return `${evidence} is asserted to be deeply, structurally equal.`
+			return `Check for deep structural equality. Evidence: ${evidence}.`
 		case 'containment':
-			return `${evidence} is asserted to contain the declared member.`
+			return `Check for containment of the declared member. Evidence: ${evidence}.`
 	}
 }
 
@@ -95,7 +94,7 @@ function structuralClaim(
 	relation: StructuralRelation,
 	evidence: string,
 ): string {
-	return `${evidence} is asserted to satisfy the declared "${relation}" condition.`
+	return `Check the declared "${relation}" condition. Evidence: ${evidence}.`
 }
 
 function renderRelationClaim(relation: Relation, evidence: string): string {

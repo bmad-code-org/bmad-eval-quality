@@ -98,6 +98,8 @@ Usage:
   --strict                          promote CONCERNS to exit 1
 ```
 
+A verdict requires `--isolation-manifest` and `--evaluator-configuration`. Argument parsing accepts either absence; the run is Invalid (exit 3).
+
 At least one `--record` is required, along with `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest`. Repeat `--record` once per trial. Every record carries its own `trialIndex`; scoring orders the set by that field, requires distinct indices, and requires agreement on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
 `--designated-oracle` pairs the probe with one oracle for the witness match and the trial vote.
@@ -200,9 +202,10 @@ Inputs and outputs:
   --in is the only input that falls back to stdin: compile and seal read it
   when --in is left out. "-" names stdin explicitly on any input, and at most
   one input may be "-" per invocation. compile and seal each take one input;
-  preflight takes three, all required; score takes eight, three of them
-  optional (--isolation-manifest, --evaluator-configuration, and
-  --private-manifest), and --record may repeat; aggregate-strength takes three,
+  preflight takes three, all required; score takes eight inputs and --record
+  may repeat. Argument parsing accepts absent --isolation-manifest and
+  --evaluator-configuration; either absence makes the run Invalid (exit 3).
+  --private-manifest is optional. aggregate-strength takes three,
   all required, and --evidence may repeat. Without --out the artifact goes to
   stdout. An --out ending in .json is a file path; anything else is a
   directory taking <target>/<kind>.json. Diagnostics and errors go to stderr.
@@ -345,3 +348,21 @@ There is one runner per port, and `EnvironmentProbePort` has one arm per mechani
 - [How It Works](/explanation/behavioral-evaluation-contracts/)
 - [Contract Strength](/explanation/contract-strength/)
 - [Glossary](/reference/glossary/)
+
+
+## Bounded regex matching
+
+`regex` accepts anchored ECMA-262 patterns with no external flags:
+
+- Literals, dot, character classes and negated classes.
+- `^`, `$`, `\b` and `\B` assertions.
+- Ordinary and named capturing groups, `(?:...)` groups, positive and negative lookahead, and alternation, including empty alternatives. Captures have no observable output.
+- Scoped `i`, `m` and `s` modifiers, including nested enable/disable groups, when the runtime accepts their syntax.
+- Greedy or lazy `*`, `+`, `?`, `{m}`, `{m,}` and `{m,n}` repetition. Large repetition counts stay budgeted and are never expanded into copies of the pattern.
+- Native character escapes and Annex B behavior, including legacy octal escapes beginning with zero, identity escapes, malformed control-escape fallback and literal braces outside valid repetition.
+
+Compile refuses backreferences, lookbehind and malformed ECMA-262 syntax. Source length is limited to 4096 UTF-16 code units and group nesting to 64 levels. These refusals use `malformed-operator-expression` and exit 4. Contracts exceeding the resource limits must split or simplify their patterns.
+
+At evaluation, nested quantifiers retain their unconditional `budget-exhausted` fault. Other patterns run through a synchronous endpoint-set interpreter that counts node visits, repetition iterations and endpoint-set merges against `regexMatchStepBudget`. A preliminary quantifier-count times input-length estimate must also fit that budget. Parsing has the separate source-length and nesting limits above. Native regular expressions evaluate individual character atoms and anchors, each bounded by the source limit. No whole-pattern native match runs on the observed response.
+
+Ambiguous repeated alternatives such as `^(a|aa)*$` and adjacent repetitions such as `^\d*\d*x$` either return a boolean or raise `budget-exhausted` (exit 5) within the work bound. Preflight and probe-witness checks each use a fixed 1,000,000-step budget; oracle scoring uses the declared scoring policy. The execution stays synchronous and requires no runtime dependency.

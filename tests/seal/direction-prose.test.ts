@@ -30,20 +30,20 @@ const FAMILY_PATTERN: Partial<Record<string, RegExp>> = {
 		/Every element reachable through .+ is asserted to meet the declared condition\./,
 	'for-any':
 		/At least one element reachable through .+ is asserted to meet the declared condition\./,
-	all: /is asserted to satisfy every declared condition together\./,
-	any: /is asserted to satisfy at least one declared condition\./,
-	not: /is asserted to fail the declared condition, not to satisfy it\./,
-	existence: /is asserted to be present\./,
-	absence: /is asserted to be absent\./,
-	equality: /is asserted to be equal\./,
-	'deep-equality': /is asserted to be deeply, structurally equal\./,
-	containment: /is asserted to contain the declared member\./,
+	all: /Check that every declared condition holds together\./,
+	any: /Check that at least one declared condition holds\./,
+	not: /Check that the declared condition fails\./,
+	existence: /Check for presence\./,
+	absence: /Check for absence\./,
+	equality: /Check for equality\./,
+	'deep-equality': /Check for deep structural equality\./,
+	containment: /Check for containment of the declared member\./,
 }
 
 function expectedPatternFor(relation: string): RegExp {
 	return (
 		FAMILY_PATTERN[relation] ??
-		new RegExp(`is asserted to satisfy the declared "${relation}" condition\\.`)
+		new RegExp(`Check the declared "${relation}" condition\\.`)
 	)
 }
 
@@ -173,9 +173,7 @@ describe('AC 3: the relation-keyed template families', () => {
 			{ ...base, relation: 'all' },
 			gateCIndex,
 		)
-		expect(notText.toLowerCase()).toMatch(
-			/not to satisfy|fail the declared condition/,
-		)
+		expect(notText.toLowerCase()).toMatch(/the declared condition fails/)
 		expect(notText).not.toBe(allText)
 	})
 
@@ -219,8 +217,8 @@ describe('AC 3: the relation-keyed template families', () => {
 			{ ...base, relation: 'absence' },
 			gateCIndex,
 		)
-		expect(existenceText).toContain('is asserted to be present.')
-		expect(absenceText).toContain('is asserted to be absent.')
+		expect(existenceText).toContain('Check for presence.')
+		expect(absenceText).toContain('Check for absence.')
 		expect(existenceText).not.toBe(absenceText)
 	})
 
@@ -293,7 +291,7 @@ describe('AC 3: the relation-keyed template families', () => {
 			negativeDomain: 'UNIQUENEGATIVEDOMAINMARKER text',
 		}
 		const text = renderDirectionText(direction, gateCIndex)
-		const relationIndex = text.indexOf('is asserted to be equal')
+		const relationIndex = text.indexOf('Check for equality')
 		const polarityIndex = text.indexOf('expects this relation to hold')
 		const scopeIndex = text.indexOf('UNIQUESCOPEMARKER')
 		const negativeDomainIndex = text.indexOf('UNIQUENEGATIVEDOMAINMARKER')

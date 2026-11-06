@@ -314,10 +314,10 @@ describe('regexMatch', () => {
 		expect(fault.message).toContain('100')
 	})
 
-	it('does not throw just under that same budget, proving the linear gate is a real threshold', () => {
+	it('matches when both the estimate and interpreted work fit the declared budget', () => {
 		const pattern = '^a+b+c+$'
-		const budget = 100
-		// estimatedSteps = (1 + 3) * 25 = 100, not > 100.
+		const budget = 1000
+		// Both the preliminary estimate and the actual interpreted work must fit.
 		const value = `${'a'.repeat(9)}${'b'.repeat(8)}${'c'.repeat(8)}`
 		expect(value).toHaveLength(25)
 		expect(regexMatch(value, pattern, budget, PATH)).toBe(true)

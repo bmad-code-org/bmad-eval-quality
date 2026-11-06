@@ -52,11 +52,11 @@
   "directions": [
     {
       "oracleId": "O-001",
-      "text": "The selected field of its standard output from the run skill command (with the supplied option skill and the supplied stdin prompt) is asserted to contain the declared member. The declared polarity expects this relation to hold. One selection call for the frontend case. A selection missing a mandated item is treated as a defect."
+      "text": "Check for containment of the declared member. Evidence: the selected field of its standard output from the run skill command (with the supplied option skill and the supplied stdin prompt). The declared polarity expects this relation to hold. One selection call for the frontend case. A selection missing a mandated item is treated as a defect."
     },
     {
       "oracleId": "O-002",
-      "text": "The selected field of its standard output from the run skill command (with the supplied option skill and the supplied stdin prompt) is asserted to fail the declared condition, not to satisfy it. The declared polarity expects this relation to hold. Every item returned for the frontend case, searched for any the rules exclude. A selection carrying an item the rules exclude for the case is treated as a defect."
+      "text": "Check that the declared condition fails. Evidence: the selected field of its standard output from the run skill command (with the supplied option skill and the supplied stdin prompt). The declared polarity expects this relation to hold. Every item returned for the frontend case, searched for any the rules exclude. A selection carrying an item the rules exclude for the case is treated as a defect."
     }
   ],
   "parentDigest": null,

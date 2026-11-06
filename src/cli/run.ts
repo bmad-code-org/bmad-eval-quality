@@ -207,6 +207,9 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
                                   [--designated-oracle <O-id>]
                                   [--out <target>] [--strict]
 
+  A verdict requires --isolation-manifest and --evaluator-configuration.
+  Argument parsing accepts either absence; the run is Invalid (exit 3).
+
   --record <path>                   a sealed trial record to ingest; repeat for each trial
   --contract <path>                 the compiled contract to score against
   --probe <path>                    the probe the record was run against
@@ -242,9 +245,10 @@ const IO_RULES = `Inputs and outputs:
   --in is the only input that falls back to stdin: compile and seal read it
   when --in is left out. "-" names stdin explicitly on any input, and at most
   one input may be "-" per invocation. compile and seal each take one input;
-  preflight takes three, all required; score takes eight, three of them
-  optional (--isolation-manifest, --evaluator-configuration, and
-  --private-manifest), and --record may repeat; aggregate-strength takes three,
+  preflight takes three, all required; score takes eight inputs and --record
+  may repeat. Argument parsing accepts absent --isolation-manifest and
+  --evaluator-configuration; either absence makes the run Invalid (exit 3).
+  --private-manifest is optional. aggregate-strength takes three,
   all required, and --evidence may repeat. Without --out the artifact goes to
   stdout. An --out ending in .json is a file path; anything else is a
   directory taking <target>/<kind>.json. Diagnostics and errors go to stderr.`

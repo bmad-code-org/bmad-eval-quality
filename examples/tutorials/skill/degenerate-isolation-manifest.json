@@ -10,7 +10,7 @@
   "conditionArm": "degenerate",
   "contractDigest": "sha256:5eb9a97ec666c68dfb12e9c512422b9cb50a57c407257a0287332d30bfcc6989",
   "contractId": "checklist-selection",
-  "evaluatorConfigurationDigest": "sha256:7f8160adfe5c410ef8358df691ce4f2881bd4ac3253604c21363928c5fff9277",
+  "evaluatorConfigurationDigest": "sha256:21d9e9e6607e886a3258b6868fa2a90a530ea6d4a4d1d237d675dd3dca79b969",
   "forbiddenInputAccounting": {
     "builder-transcript": {
       "note": null,

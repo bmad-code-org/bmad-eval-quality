@@ -7,7 +7,7 @@
   },
   "conditionArm": "degenerate",
   "contractDigest": "sha256:5eb9a97ec666c68dfb12e9c512422b9cb50a57c407257a0287332d30bfcc6989",
-  "evaluatorConfigurationDigest": "sha256:7f8160adfe5c410ef8358df691ce4f2881bd4ac3253604c21363928c5fff9277",
+  "evaluatorConfigurationDigest": "sha256:21d9e9e6607e886a3258b6868fa2a90a530ea6d4a4d1d237d675dd3dca79b969",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -49,7 +49,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:542d84d8cd4ae567de9633668e6acf6395921e19bd3b4d6f961252ca40226139",
+    "digest": "sha256:2d9f58c887c255b55f8706fd0a51d1e19553ded5f35ab347bf1f8ac4f0587623",
     "path": "examples/tutorials/skill/degenerate-isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -134,6 +134,6 @@
   "revisionCount": 0,
   "runId": "skill-degenerate-1",
   "schemaVersion": 8,
-  "sealedBriefDigest": "sha256:43c013d51600453c810000c71f50b3edfdc4269f82354dbd2c4c825c4e291b63",
+  "sealedBriefDigest": "sha256:4c268316d9eedda61330209a9a069b61499a5d197b5f36a59968096b5ad323bf",
   "trialIndex": 1
 }

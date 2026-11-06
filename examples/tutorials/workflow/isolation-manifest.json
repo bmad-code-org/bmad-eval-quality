@@ -10,7 +10,7 @@
   "conditionArm": "mutated",
   "contractDigest": "sha256:6c06216318aa9e08e88ddad336de59009136c4841c076d2d64d94eaa1e42e3a4",
   "contractId": "captured-read-back",
-  "evaluatorConfigurationDigest": "sha256:969e7f2e34af34bbfddb07187e520d492c5ccecd6d72dac122f2306054b4b989",
+  "evaluatorConfigurationDigest": "sha256:07a304f5246383fc30321476b5170d039e1e4156986c769c5fc50939f86d968f",
   "forbiddenInputAccounting": {
     "builder-transcript": {
       "note": null,

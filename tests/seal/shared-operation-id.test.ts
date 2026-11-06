@@ -146,7 +146,7 @@ describe('seal over a contract that shares no operation id', () => {
 		expect(brief.directions).toEqual([
 			{
 				oracleId: 'O-001',
-				text: 'The fragments field of its standard output from the select fragments command (with the supplied stdin prompt) is asserted to be present. The declared polarity expects this relation to hold. One selection call for one task. A selection naming no fragment at all is treated as a defect.',
+				text: 'Check for presence. Evidence: the fragments field of its standard output from the select fragments command (with the supplied stdin prompt). The declared polarity expects this relation to hold. One selection call for one task. A selection naming no fragment at all is treated as a defect.',
 			},
 		])
 	})

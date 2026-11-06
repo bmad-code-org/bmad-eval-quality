@@ -113,7 +113,7 @@ export const AnchoredPattern = z
 	.string()
 	.regex(ANCHORED_PATTERN_FORM)
 	.describe(
-		'An ECMA-262 pattern, fully anchored: it begins with "^" and ends with "$". A named field rather than a `{ literal }` operand, so the compiler\'s backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation "^a|b$" or a trailing "$" that is escaped; those are the compiler\'s, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as "(^a$)" — write "^(?:a|b)$" rather than "(?:^a$|^b$)" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express.',
+		'An anchored ECMA-262 pattern with no flags. Ordinary and named capturing groups, non-capturing groups, positive and negative lookahead, scoped i/m/s modifiers supported by the runtime, alternation, character classes, anchors and greedy or lazy repetition retain boolean matching semantics. Compile refuses backreferences and lookbehind, sources exceeding 4096 UTF-16 code units, and nesting exceeding 64 groups. Native Annex B escapes and literal braces are supported. Matching uses an interpreter with a work budget; nested quantifiers retain their unconditional budget-exhausted fault. This schema checks only initial ^ and final $; compile checks whole-expression anchoring and syntax.',
 	)
 
 /**

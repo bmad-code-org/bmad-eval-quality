@@ -109,11 +109,11 @@ const check = (
  */
 const sameFixtureState = (left: LegState, right: LegState): boolean =>
 	digestArtifact(
-		stateResetProjection(left.projected, left.leg.operation),
+		stateResetProjection(left.observation, left.leg.operation),
 		PREFLIGHT_ARTIFACT_PATH,
 	) ===
 	digestArtifact(
-		stateResetProjection(right.projected, right.leg.operation),
+		stateResetProjection(right.observation, right.leg.operation),
 		PREFLIGHT_ARTIFACT_PATH,
 	)
 

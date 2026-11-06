@@ -64,59 +64,34 @@ const isJsonObject = (
 
 const ARRAY_INDEX = /^(?:0|[1-9][0-9]*)$/
 
-/**
- * Deletes one already-decoded pointer from a cloned body value, in place. A
- * `*` token fans out over every element of an array and every key of an
- * object at its position; a pointer that resolves to nothing is a no-op.
- */
-function deleteAt(node: JsonValue, tokens: readonly string[]): void {
-	const [token, ...rest] = tokens
-	if (token === undefined) return
-	if (rest.length === 0) {
-		deleteLeaf(node, token)
-		return
-	}
-	if (token === VOLATILE_WILDCARD) {
-		if (Array.isArray(node)) {
-			for (const child of node) deleteAt(child, rest)
-		} else if (isJsonObject(node)) {
-			for (const key of Object.keys(node))
-				deleteAt(node[key] as JsonValue, rest)
-		}
-		return
-	}
+/** Prunes one node against all paths before compacting any array indices. */
+function pruneValue(
+	node: JsonValue,
+	paths: readonly (readonly string[])[],
+): JsonValue {
+	const childPaths = (key: string) =>
+		paths
+			.filter((path) => path[0] === key || path[0] === VOLATILE_WILDCARD)
+			.map((path) => path.slice(1))
 	if (Array.isArray(node)) {
-		if (!ARRAY_INDEX.test(token)) return
-		const next = node[Number(token)]
-		if (next !== undefined) deleteAt(next, rest)
-		return
+		return node.flatMap((child, index) => {
+			const tails = childPaths(String(index))
+			return tails.some((tail) => tail.length === 0)
+				? []
+				: [pruneValue(child, tails)]
+		})
 	}
-	if (!isJsonObject(node) || !Object.hasOwn(node, token)) return
-	deleteAt(node[token] as JsonValue, rest)
-}
-
-/** The last step of `deleteAt`: removes the element, key or (for the wildcard) every one. */
-function deleteLeaf(parent: JsonValue, token: string): void {
-	if (Array.isArray(parent)) {
-		if (token === VOLATILE_WILDCARD) {
-			parent.length = 0
-			return
-		}
-		if (!ARRAY_INDEX.test(token)) return
-		const index = Number(token)
-		if (index >= parent.length) return
-		parent.splice(index, 1)
-		return
+	if (isJsonObject(node)) {
+		return Object.fromEntries(
+			Object.entries(node).flatMap(([key, child]) => {
+				const tails = childPaths(key)
+				return tails.some((tail) => tail.length === 0)
+					? []
+					: [[key, pruneValue(child, tails)]]
+			}),
+		)
 	}
-	if (!isJsonObject(parent)) return
-	if (token === VOLATILE_WILDCARD) {
-		for (const key of Object.keys(parent)) delete parent[key]
-		return
-	}
-	// A pointer that resolves to nothing is a no-op: a volatile field the fixture
-	// did not return this time is exactly what the declaration exists for.
-	if (!Object.hasOwn(parent, token)) return
-	delete parent[token]
+	return node
 }
 
 /**
@@ -140,8 +115,7 @@ export function pruneVolatile(
 	// declaring it says the entire body is volatile.
 	if (volatilePointers.some((pointer) => pointer === ''))
 		return { kind: 'absent' }
-	const value = structuredClone(body.value)
-	for (const pointer of volatilePointers) deleteAt(value, decodeTail(pointer))
+	const value = pruneValue(body.value, volatilePointers.map(decodeTail))
 	return { kind: 'json', value }
 }
 
@@ -206,28 +180,61 @@ function valueAt(
  * An operation that declares no `stateResetPointers` contributes its whole
  * projection, as it always did. One that declares them contributes what says
  * the call went through (status, exit code, tool error flag) and the value at
- * each listed pointer of the pruned body, so the rest of a response that varies
+ * each listed pointer in the original body, with volatile descendants removed, so the rest of a response that varies
  * run to run, such as the text a live model wrote, cannot fail the check. A
  * body that does not arrive as json has no pointers to read and is compared
  * whole, so a declaration never hides a change it cannot see.
  */
 export function stateResetProjection(
-	projected: ProjectedObservation,
+	observation: ProbeObservation,
 	operation: AnyOperation,
 ): unknown {
+	const projected = projectObservation(
+		observation,
+		{ ...operation, volatilePointers: [] },
+		PREFLIGHT_ARTIFACT_PATH,
+	)
 	const { legId: _legId, ...state } = projected
 	const pointers = operation.stateResetPointers
-	if (pointers === undefined || state.body.kind !== 'json') return state
+	if (pointers === undefined || state.body.kind !== 'json') {
+		return {
+			...state,
+			body: pruneVolatile(
+				state.body,
+				operation.volatilePointers,
+				PREFLIGHT_ARTIFACT_PATH,
+			),
+		}
+	}
 	const { value } = state.body
 	return {
 		...state,
 		body: {
 			kind: 'json',
 			selected: pointers.map((pointer) => {
-				const at = valueAt(value, decodeTail(pointer))
-				return at === undefined
+				const tokens = decodeTail(pointer)
+				const at = valueAt(value, tokens)
+				const volatile = operation.volatilePointers.map(decodeTail)
+				const covered = volatile.some(
+					(path) =>
+						path.length <= tokens.length &&
+						path.every(
+							(token, i) => token === VOLATILE_WILDCARD || token === tokens[i],
+						),
+				)
+				const descendants = volatile
+					.filter(
+						(path) =>
+							path.length > tokens.length &&
+							tokens.every(
+								(token, i) =>
+									path[i] === VOLATILE_WILDCARD || path[i] === token,
+							),
+					)
+					.map((path) => path.slice(tokens.length))
+				return at === undefined || covered
 					? { pointer, found: false }
-					: { pointer, found: true, value: at.found }
+					: { pointer, found: true, value: pruneValue(at.found, descendants) }
 			}),
 		},
 	}

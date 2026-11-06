@@ -14,6 +14,7 @@ import type {
 	JsonValue,
 	KeyedShapeDescriptor,
 } from '../schemas/primitives.ts'
+import { boundedRegexTest, REGEX_SOURCE_LIMIT } from './bounded-regex.ts'
 import { ABSENT, type ResolvedValue } from './resolved-value.ts'
 
 // Shared JSON-type vocabulary: `equality`'s type-mismatch check and `shape`'s
@@ -180,7 +181,8 @@ const CHARACTER_CLASS_CONTENTS = /\[[^\]]*\]/g
 
 // Strips a group's own `?:`/`?=`/`?!`/`?<name>` marker first, or the bare `?`
 // would misread as a quantifier and false-flag `(?:GET|POST)+` as nested.
-const GROUP_MARKER_PREFIX = /^\?(?:[:=!]|<[=!]?[^>]*>)/
+const GROUP_MARKER_PREFIX =
+	/^\?(?:[:=!]|<[=!]?[^>]*>|[ims]+(?:-[ims]+)?:|-[ims]+:)/
 
 const CONTENT_QUANTIFIER_CHARACTER = /[*+?{]/
 const TRAILING_QUANTIFIER = /^(?:[*+?]|\{\d+(?:,\d*)?\})/
@@ -221,10 +223,9 @@ const QUANTIFIER_MARKER = /[*+?]|\{\d+(?:,\d*)?\}/g
 
 /**
  * `false` if `value === ABSENT` or not a string. Pattern validity is checked
- * here; the match-step budget is a two-tier static gate, structural
- * nested-quantifier rejection then a linear estimate. The gate stays static
- * because AD-1 keeps this function synchronous and pure, and native `RegExp`
- * exposes no step counter to read.
+ * here. Structural rejection and a length estimate precede a synchronous,
+ * budgeted endpoint-set interpreter. Native RegExp evaluates individual
+ * character atoms and anchors only.
  */
 export function regexMatch(
 	value: ResolvedValue,
@@ -234,9 +235,10 @@ export function regexMatch(
 ): boolean {
 	if (value === ABSENT || typeof value !== 'string') return false
 
-	let compiled: RegExp
 	try {
-		compiled = new RegExp(pattern)
+		if (pattern.length > REGEX_SOURCE_LIMIT)
+			throw new Error(`regex source exceeds ${REGEX_SOURCE_LIMIT} code units`)
+		new RegExp(pattern)
 	} catch (cause) {
 		throw new RuntimeFault(
 			'operator-cannot-accept-operand',
@@ -271,8 +273,8 @@ export function regexMatch(
 		)
 	}
 
-	// The unstripped pattern; stripping only feeds the step estimate above.
-	return compiled.test(value)
+	// Interpret the original pattern with a work counter on every traversal and set merge.
+	return boundedRegexTest(pattern, value, matchStepBudget, artifactPath)
 }
 
 // ---------------------------------------------------------------------------
