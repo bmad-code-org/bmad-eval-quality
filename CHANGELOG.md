@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [8.0.1] - 2026-11-06
+
 ### Changed
 
 - Updated the documentation site to the BMad Core design: Archivo body text, Instrument Serif titles, IBM Plex Mono labels, light and dark palettes, compact navigation, square controls, and a shared BMad footer.
