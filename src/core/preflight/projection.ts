@@ -191,22 +191,20 @@ export function stateResetProjection(
 ): unknown {
 	const projected = projectObservation(
 		observation,
-		{ ...operation, volatilePointers: [] },
+		operation,
 		PREFLIGHT_ARTIFACT_PATH,
 	)
 	const { legId: _legId, ...state } = projected
 	const pointers = operation.stateResetPointers
-	if (pointers === undefined || state.body.kind !== 'json') {
-		return {
-			...state,
-			body: pruneVolatile(
-				state.body,
-				operation.volatilePointers,
-				PREFLIGHT_ARTIFACT_PATH,
-			),
-		}
-	}
-	const { value } = state.body
+	if (pointers === undefined || state.body.kind !== 'json') return state
+	// Selection uses original indices; body-kind fallback uses the pruned projection.
+	const original = projectObservation(
+		observation,
+		{ ...operation, volatilePointers: [] },
+		PREFLIGHT_ARTIFACT_PATH,
+	).body
+	if (original.kind !== 'json') return state
+	const { value } = original
 	return {
 		...state,
 		body: {

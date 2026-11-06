@@ -16,8 +16,10 @@ import {
 	scoringPolicyFixtureForScore,
 	sealedRunRecordFixtureForScore,
 } from '../application/fixtures/score-fixtures.ts'
+import { cleanPopulatedContract } from '../compile/helpers.ts'
 import {
 	contractDraft,
+	keylessReadContract,
 	observationsFor,
 	satisfiedPatches,
 } from '../preflight/fixtures/observations.ts'
@@ -115,6 +117,64 @@ describe('reported defects through the built CLI', () => {
 				).toBe('satisfied')
 			})
 		}
+
+	it('preserves transport-only comparison after whole-body volatile pruning', () => {
+		const contract: any = cleanPopulatedContract()
+		contract.permittedInterfaces[0].operations = [
+			{
+				...structuredClone(
+					keylessReadContract.permittedInterfaces[0]!.operations[0],
+				),
+				volatilePointers: [''],
+				stateResetPointers: [],
+			},
+		]
+		contract.oracles = []
+		for (const behavior of contract.behaviors) behavior.oracles = []
+		contract.rubrics = []
+		contract.interactionPlan = []
+		contract.referenceSets = null
+		contract.siblingGroups = null
+		const compiled = join(scratch, 'whole-volatile-compiled.json')
+		const compilation = cli([
+			'compile',
+			'--in',
+			save('whole-volatile', contract),
+			'--out',
+			compiled,
+		])
+		expect(compilation.status, compilation.stderr).toBe(0)
+		const plan = planPreflight({ contract, probes: [], runId: 'run-1' })
+		const observations = plan.legs.map((leg, index) => ({
+			kind: 'api',
+			probeId: leg.legId,
+			interfaceId: leg.request.interfaceId,
+			operationId: leg.request.operationId,
+			status: 200,
+			headers: {},
+			body:
+				index === 0
+					? { kind: 'json', value: { ok: true } }
+					: { kind: 'absent' },
+		}))
+		const result = cli([
+			'preflight',
+			'--contract',
+			compiled,
+			'--probes',
+			save('probes', []),
+			'--observations',
+			save('whole-volatile-observations', observations),
+			'--run-id',
+			'run-1',
+		])
+		expect(result.status, result.stderr).toBe(0)
+		expect(
+			JSON.parse(result.stdout).checks.find(
+				(check: any) => check.kind === 'state-reset',
+			).outcome,
+		).toBe('satisfied')
+	})
 
 	it('preserves the documented transport-only empty state-reset list', () => {
 		const contract = tutorial()
