@@ -58,6 +58,7 @@
             "description": "The prior art's `artifactType`, renamed and ratified with its eight members unchanged."
           },
           "publicSafeRunId": {
+            "description": "The run this artifact belongs to, in the public-safe vocabulary. `null` for an artifact belonging to no single run.",
             "anyOf": [
               {
                 "type": "string"
@@ -65,8 +66,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "The run this artifact belongs to, in the public-safe vocabulary. `null` for an artifact belonging to no single run."
+            ]
           },
           "sanitizationPolicy": {
             "anyOf": [

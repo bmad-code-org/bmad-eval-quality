@@ -277,8 +277,7 @@ describe('parseProbeTargetPolicy', () => {
 		)
 	})
 
-	// Zod 4's strict-object loop skips an own `__proto__` without an issue, and
-	// `JSON.parse` creates exactly that key. An HTTP authorization carries no
+	// An own `__proto__` key must produce exactly one issue. An HTTP authorization carries no
 	// record, so the policy and each authorization are the only two levels.
 	it('refuses an own __proto__ key at the policy and at each authorization', () => {
 		const valid = JSON.stringify(authorization()).slice(1, -1)
@@ -293,6 +292,34 @@ describe('parseProbeTargetPolicy', () => {
 			expect(unrecognized(issues(JSON.parse(text)))).toEqual([
 				{ path, keys: ['__proto__'] },
 			])
+		}
+	})
+
+	it('keeps a diagnostic for inherited forbidden keys and authorizations', () => {
+		const inherited = JSON.parse('{"__proto__":{}}')
+		const entry = Object.create(
+			inherited,
+			Object.getOwnPropertyDescriptors(authorization()),
+		)
+		const root = Object.create(inherited, {
+			authorizations: { value: [], enumerable: true },
+		})
+		const inheritedAuthorizations = Object.create({
+			authorizations: [
+				JSON.parse(
+					`{${JSON.stringify(authorization()).slice(1, -1)},"__proto__":{}}`,
+				),
+			],
+		})
+		for (const [value, path] of [
+			[root, []],
+			[{ authorizations: [entry] }, ['authorizations', 0]],
+			[inheritedAuthorizations, ['authorizations', 0]],
+		] as const) {
+			expect(unrecognized(issues(value))).toEqual([
+				{ path, keys: ['__proto__'] },
+			])
+			expect(refused(value).message).toContain('Unrecognized key: "__proto__"')
 		}
 	})
 

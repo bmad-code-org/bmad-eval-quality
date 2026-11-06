@@ -1,17 +1,15 @@
 ---
 title: "eval-quality"
 description: "Mutation testing for evaluations. Plant a known defect, run the same evaluation, and check that it catches it."
-template: splash
 hero:
   tagline: "Write the eval. Hide the bug. See if the eval catches it."
   actions:
     - text: "Start here"
-      link: /bmad-eval-quality/tutorials/getting-started/
-      icon: right-arrow
+      link: ./tutorials/getting-started/
       variant: primary
     - text: "How it works"
-      link: /bmad-eval-quality/explanation/behavioral-evaluation-contracts/
-      icon: external
+      link: ./explanation/behavioral-evaluation-contracts/
+      variant: secondary
 ---
 
 ## An evaluation can pass and prove nothing

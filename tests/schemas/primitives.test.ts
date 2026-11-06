@@ -115,6 +115,8 @@ describe('the decimal-string format AD-36 requires for money', () => {
 describe('RFC 3339 in UTC', () => {
 	it('accepts a trailing Z and rejects a numeric offset', () => {
 		expect(Rfc3339Utc.safeParse('2026-08-13T00:00:00Z').success).toBe(true)
+		expect(Rfc3339Utc.safeParse('2026-08-13T00:00:00.123Z').success).toBe(true)
+		expect(Rfc3339Utc.safeParse('2026-08-13T00:00Z').success).toBe(true)
 		expect(Rfc3339Utc.safeParse('2026-08-13T00:00:00+02:00').success).toBe(
 			false,
 		)

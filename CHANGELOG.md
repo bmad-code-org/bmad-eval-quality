@@ -10,7 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the documentation site to the BMad Core design: Archivo body text, Instrument Serif titles, IBM Plex Mono labels, light and dark palettes, compact navigation, square controls, and a shared BMad footer.
+  Kept eval-quality's guides, search, navigation, and Apache-2.0 licence details.
+- Included website source in automated PR reviews.
+
 ### Fixed
+
+- Updated Zod, Vite, Vitest, Astro, and URI parsing dependencies to patched versions after the CI security audit found vulnerable pins.
+  The schema publisher keeps inline roots and nullable unions, accepts matching tuple bounds emitted by Zod, and rejects conflicting bounds.
+  Target-policy parsing reports each forbidden prototype key once.
+  Existing UTC timestamps with minute precision remain accepted.
 
 - **The documentation build now locks `http-cache-semantics@4.3.0` and audits its graph without the temporary advisory exception.**
   The newer dependency clears the high severity npm audit finding. The website audit continues to fail for any high or critical finding, incomplete report, or failed audit process.

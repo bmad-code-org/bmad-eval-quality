@@ -68,6 +68,7 @@
             ]
           },
           "observableSuccessCriterion": {
+            "description": "AD-19: what observable condition means this behaviour was met, which is not the nominated success indicator of any one operation. `null` is the shape `no-observable-success-criterion` fires on, and that code fires on exactly this condition and never on an empty oracle list.",
             "anyOf": [
               {
                 "type": "string"
@@ -75,8 +76,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "AD-19: what observable condition means this behaviour was met, which is not the nominated success indicator of any one operation. `null` is the shape `no-observable-success-criterion` fires on, and that code fires on exactly this condition and never on an empty oracle list."
+            ]
           },
           "requirementLinks": {
             "type": "array",
@@ -197,6 +197,7 @@
                     "description": "Coin flip (a), settled: polarity is declared twice, here and on the oracle. AD-3 names it as one of the three axes the alignment predicate binds and AD-33 gives every check one, so declaring it once makes the alignment predicate vacuous on a third of its content. Duplication is what makes drift detectable, and the drift is deliberately not refined away: `direction-check-misaligned` needs the disagreement to stay representable."
                   },
                   "scope": {
+                    "description": "Evaluator-facing, and exempt from the alignment predicate, which binds evidence targets, relation, and polarity only.",
                     "anyOf": [
                       {
                         "type": "string"
@@ -204,10 +205,10 @@
                       {
                         "type": "null"
                       }
-                    ],
-                    "description": "Evaluator-facing, and exempt from the alignment predicate, which binds evidence targets, relation, and polarity only."
+                    ]
                   },
                   "negativeDomain": {
+                    "description": "Evaluator-facing and exempt from alignment. `seal` renders it as an unordered set so the brief is byte-identical under reordering.",
                     "anyOf": [
                       {
                         "type": "string"
@@ -215,8 +216,7 @@
                       {
                         "type": "null"
                       }
-                    ],
-                    "description": "Evaluator-facing and exempt from alignment. `seal` renders it as an unordered set so the brief is byte-identical under reordering."
+                    ]
                   }
                 },
                 "required": [
@@ -254,6 +254,7 @@
             "description": "AD-33: every check declares one polarity, and it lives at oracle level rather than inside the expression tree. Required and explicit rather than defaulted to `expects-hold`: a Zod default diverges input and output mode and the explicit-null convention forbids implicit absence."
           },
           "commentary": {
+            "description": "AD-3's author documentation. No predicate reads it and `seal` never emits it, because a channel the evaluator reads and no predicate audits is the free-prose channel AD-3 exists to close.",
             "anyOf": [
               {
                 "type": "string"
@@ -261,8 +262,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "AD-3's author documentation. No predicate reads it and `seal` never emits it, because a channel the evaluator reads and no predicate audits is the free-prose channel AD-3 exists to close."
+            ]
           }
         },
         "required": [
@@ -293,6 +293,7 @@
             "pattern": "^W-[0-9]{3,}$"
           },
           "rule": {
+            "description": "The AD-20 discipline rule this waiver names. An opaque string rather than an enum: AD-20 enumerates seven rules in prose and assigns them no identifiers, and minting them here would invent a vocabulary that AD-20 enforcement would then have to match.",
             "anyOf": [
               {
                 "type": "string"
@@ -300,8 +301,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "The AD-20 discipline rule this waiver names. An opaque string rather than an enum: AD-20 enumerates seven rules in prose and assigns them no identifiers, and minting them here would invent a vocabulary that AD-20 enforcement would then have to match."
+            ]
           },
           "rationale": {
             "anyOf": [
@@ -314,6 +314,7 @@
             ]
           },
           "condition": {
+            "description": "A machine-checkable context condition. AD-5 requires one \"where one exists\", so `null` here is a complete waiver rather than an incomplete one.",
             "anyOf": [
               {
                 "type": "string"
@@ -321,8 +322,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "A machine-checkable context condition. AD-5 requires one \"where one exists\", so `null` here is a complete waiver rather than an incomplete one."
+            ]
           },
           "approval": {
             "anyOf": [
@@ -1714,6 +1714,7 @@
                 "description": "Objects carrying at least the declared keys. That they do is deliberately not refined: no AD-5 code names it, and a refinement would be invisible to a non-TypeScript consumer and become a disagreement in the published-schema differential check."
               },
               "commentary": {
+                "description": "Author documentation. Named `commentary` rather than the Gate C fixture's `note` so the sealed brief has one word to exclude, matching the oracle field of the same name. No predicate reads it.",
                 "anyOf": [
                   {
                     "type": "string"
@@ -1721,8 +1722,7 @@
                   {
                     "type": "null"
                   }
-                ],
-                "description": "Author documentation. Named `commentary` rather than the Gate C fixture's `note` so the sealed brief has one word to exclude, matching the oracle field of the same name. No predicate reads it."
+                ]
               }
             },
             "required": [
@@ -2328,9 +2328,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 2,
-              "items": false
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             }
           },
           "required": [
@@ -2356,9 +2356,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 2,
-              "items": false
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             }
           },
           "required": [
@@ -2384,9 +2384,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands: the container is legally a pointer, and the set is legally a pointer, a literal, or a reference set. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 2,
-              "items": false
+              "description": "Two operands: the container is legally a pointer, and the set is legally a pointer, a literal, or a reference set. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             }
           },
           "required": [
@@ -2409,9 +2409,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             }
           },
           "required": [
@@ -2434,9 +2434,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             }
           },
           "required": [
@@ -2459,9 +2459,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             },
             "pattern": {
               "type": "string",
@@ -2525,9 +2525,9 @@
                   ]
                 }
               ],
-              "description": "Two operands: the value is legally a pointer, and the set is a reference set or a non-empty literal array. The set position is the one place the schema does narrow, and coin flip (b) records what that costs. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 2,
-              "items": false
+              "description": "Two operands: the value is legally a pointer, and the set is a reference set or a non-empty literal array. The set position is the one place the schema does narrow, and coin flip (b) records what that costs. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             }
           },
           "required": [
@@ -2550,9 +2550,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             },
             "key": {
               "type": "string",
@@ -2588,9 +2588,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             },
             "expected": {
               "type": "integer",
@@ -2632,9 +2632,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             },
             "descriptor": {
               "type": "object",
@@ -2714,9 +2714,9 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands: `expected` is legally a reference set, and `actual` is legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
+              "items": false,
               "minItems": 2,
-              "items": false
+              "description": "Two operands: `expected` is legally a reference set, and `actual` is legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
             },
             "expectedKey": {
               "type": "string",
@@ -2749,9 +2749,9 @@
                   "$ref": "#/$defs/Expression"
                 }
               ],
-              "description": "One nested expression rather than an operand. A connective composes the tree; it never addresses evidence itself.",
+              "items": false,
               "minItems": 1,
-              "items": false
+              "description": "One nested expression rather than an operand. A connective composes the tree; it never addresses evidence itself."
             }
           },
           "required": [

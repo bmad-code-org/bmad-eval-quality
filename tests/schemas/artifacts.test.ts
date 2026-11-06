@@ -1,10 +1,11 @@
+import { schemaDocument } from '../../src/core/schemas/json-schema.ts'
 // Per-artifact behaviour. Each assertion is written so it fails if the property
 // it names is removed: the exclusions are asserted as negatives with their
 // issue code and path rather than assumed from strictness, and the generated
 // shapes are compared against the list they were generated from.
 
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
+import type { z } from 'zod'
 import {
 	INTERCHANGE_ARTIFACT_KEYS,
 	INTERCHANGE_ARTIFACTS,
@@ -348,7 +349,7 @@ describe('the finding union, where AD-23 says "additionally"', () => {
 			// witnesses from a branch's own JSON Schema, so the rule has to be in
 			// the shape. Two arms: a literal channel with a string identifier, and
 			// a seven-member enum with a null one.
-			const published = z.toJSONSchema(QuotedEvidence, { io: 'input' }) as any
+			const published = schemaDocument(QuotedEvidence, { io: 'input' }) as any
 			const arms = published.anyOf as any[]
 			expect(arms).toHaveLength(2)
 			expect(arms[0].properties.channel).toEqual({
@@ -432,7 +433,7 @@ describe("the isolation manifest's forbidden-input accounting", () => {
 	// A strict object rather than a record over the enum, so the export carries a
 	// `required` array the non-TypeScript consumer AD-13 protects can read.
 	it('exports a required array rather than propertyNames', () => {
-		const document = z.toJSONSchema(IsolationManifest, { io: 'input' }) as any
+		const document = schemaDocument(IsolationManifest, { io: 'input' }) as any
 		const accounting = document.properties.forbiddenInputAccounting
 		expect(accounting.propertyNames).toBeUndefined()
 		expect(accounting.additionalProperties).toBe(false)
@@ -604,7 +605,7 @@ describe("the evidence artifact's vocabularies", () => {
 	// AD-7: "Canary probes and clean controls never enter the vector", so the
 	// fourth class has no key at all and its absence is structural.
 	it('keys the strength vector by three classes and not four', () => {
-		const document = z.toJSONSchema(EvidenceArtifact, { io: 'input' }) as any
+		const document = schemaDocument(EvidenceArtifact, { io: 'input' }) as any
 		const vector = document.oneOf[0].properties.strength.properties.vector
 		expect(Object.keys(vector.properties)).toEqual([
 			'defect',
@@ -739,7 +740,7 @@ describe('the published Rubric', () => {
 	})
 
 	it('gives the shared body a stable $defs name inside the contract', () => {
-		const document = z.toJSONSchema(
+		const document = schemaDocument(
 			INTERCHANGE_ARTIFACTS['eval-contract'].schema,
 			{ io: 'input' },
 		) as any
@@ -748,7 +749,7 @@ describe('the published Rubric', () => {
 	})
 
 	it('spreads the body flat rather than nesting it', () => {
-		const document = z.toJSONSchema(Rubric, { io: 'input' }) as any
+		const document = schemaDocument(Rubric, { io: 'input' }) as any
 		expect(document.$defs).toBeUndefined()
 		expect(document.properties.criteria).toBeDefined()
 	})
@@ -760,7 +761,7 @@ describe('the shared vocabularies, derived rather than rebuilt', () => {
 	// the EvalContract export bytes. The key set is asserted instead.
 	it('keeps RequestShape hand-written and agreeing with the transport enum', () => {
 		expect(Object.keys(RequestShape.shape)).toEqual([...TRANSPORT_CHANNELS])
-		const requestShape = z.toJSONSchema(RequestShape, { io: 'input' }) as any
+		const requestShape = schemaDocument(RequestShape, { io: 'input' }) as any
 		expect(requestShape.properties.header.description).toContain(
 			'never carries a credential value',
 		)

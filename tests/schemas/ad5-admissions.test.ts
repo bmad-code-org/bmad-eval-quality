@@ -1,3 +1,4 @@
+import { schemaDocument } from '../../src/core/schemas/json-schema.ts'
 // Walks AD-5's codes, the twenty-seventh included, plus AD-28's schema-version-mismatch fault.
 // Rule: where AD-5 gives the compiler a literal code, the schema admits the
 // shape and Epic 4 or Epic 5 rejects it; tightening past a code would convert
@@ -5,7 +6,6 @@
 // schema-parse-failure fault. Operator arity is the one deliberate exception.
 
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import { INTERCHANGE_ARTIFACTS } from '../../src/core/schemas/artifact.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { ARTIFACT_ACCEPT_FIXTURES } from './fixtures/artifact-fixtures.ts'
@@ -667,7 +667,7 @@ describe('cross-artifact and cross-field rules this story leaves unenforced', ()
 		const carriers: string[] = []
 		for (const [key, entry] of Object.entries(INTERCHANGE_ARTIFACTS)) {
 			const document = JSON.stringify(
-				z.toJSONSchema(entry.schema, { io: 'input' }),
+				schemaDocument(entry.schema, { io: 'input' }),
 			)
 			const carriesRequired = document.includes('requiredKeys')
 			const carriesPermitted = document.includes('permittedKeys')

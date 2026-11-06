@@ -71,7 +71,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 			contract.interactionPlan[0].inputBinding.cookie = null
 		},
 		issuePath: ['interactionPlan', 0, 'inputBinding'],
-		issueCode: 'invalid_union',
+		issueCode: 'unrecognized_keys',
 		keyword: 'additionalProperties',
 		instancePath: '/interactionPlan/0/inputBinding',
 		errorParams: { additionalProperty: 'cookie' },
@@ -120,7 +120,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 			0,
 			'inputs',
 		],
-		issueCode: 'invalid_union',
+		issueCode: 'unrecognized_keys',
 		keyword: 'additionalProperties',
 		instancePath:
 			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
@@ -252,7 +252,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 			contract.interactionPlan[0].inputBinding.body = null
 		},
 		issuePath: ['interactionPlan', 0, 'inputBinding'],
-		issueCode: 'invalid_union',
+		issueCode: 'unrecognized_keys',
 		keyword: 'additionalProperties',
 		instancePath: '/interactionPlan/0/inputBinding',
 		errorParams: { additionalProperty: 'body' },
@@ -301,7 +301,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 			0,
 			'inputs',
 		],
-		issueCode: 'invalid_union',
+		issueCode: 'unrecognized_keys',
 		keyword: 'additionalProperties',
 		instancePath:
 			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
@@ -351,7 +351,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 			0,
 			'inputs',
 		],
-		issueCode: 'invalid_union',
+		issueCode: 'unrecognized_keys',
 		keyword: 'additionalProperties',
 		instancePath:
 			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',

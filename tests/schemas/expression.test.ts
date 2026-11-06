@@ -108,7 +108,7 @@ describe('the operand union', () => {
 			collectionLocation: '/items',
 		})
 		expect(result.success).toBe(false)
-		expect(result.error?.issues[0]?.code).toBe('invalid_union')
+		expect(result.error?.issues[0]?.code).toBe('unrecognized_keys')
 	})
 
 	it('reports an operand failure as invalid_union with per-branch errors nested', () => {

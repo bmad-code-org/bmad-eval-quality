@@ -222,8 +222,8 @@ export type McpTargetPolicy = z.infer<typeof McpTargetPolicy>
 
 /**
  * An own `__proto__` key, which `JSON.parse` creates as an ordinary property,
- * as the unrecognized key it is. Zod 4's strict-object and record loops skip
- * that one key without an issue, so a strict schema alone would accept it.
+ * as the unrecognized key it is. Zod's record parser skips this key, so the
+ * policy boundary checks it explicitly at each declared object level.
  * The issue carries no `input`, as no issue Zod's own parse reports does: the
  * `ZodError` is the refusal's `cause`, and an `input` would hold a live
  * reference to the caller's object there, which also makes the `ZodError`
@@ -260,7 +260,7 @@ export type PolicyParseResult<T> =
 	| { readonly success: false; readonly error: z.ZodError }
 
 /**
- * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the levels a
+ * `schema.safeParse`, plus explicit own `__proto__` checks at the levels a
  * target policy can carry one: the policy, each authorization, and the one
  * record each authorization declares, when it declares one. `recordField` is
  * `undefined` for a policy whose authorizations hold no record. Every other
@@ -294,7 +294,32 @@ function safeParseTargetPolicy<T>(
 		success: false,
 		error: new z.ZodError([
 			...issues,
-			...(parsed.success ? [] : parsed.error.issues),
+			...(parsed.success ? [] : parsed.error.issues).flatMap((issue) => {
+				if (
+					issue.code !== 'unrecognized_keys' ||
+					!issue.keys.includes('__proto__') ||
+					!issues.some(
+						(explicit) =>
+							explicit.path.length === issue.path.length &&
+							explicit.path.every(
+								(segment, index) => segment === issue.path[index],
+							),
+					)
+				)
+					return [issue]
+				// Strict objects now report this key too. Keep our explicit issue once;
+				// records still need it because Zod omits their own __proto__ keys.
+				const keys = issue.keys.filter((key) => key !== '__proto__')
+				return keys.length === 0
+					? []
+					: [
+							{
+								...issue,
+								keys,
+								message: `Unrecognized key${keys.length === 1 ? '' : 's'}: ${keys.map((key) => JSON.stringify(key)).join(', ')}`,
+							},
+						]
+			}),
 		]),
 	}
 }

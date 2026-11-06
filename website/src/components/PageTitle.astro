@@ -1,0 +1,41 @@
+---
+const { entry, sidebar } = Astro.locals.starlightRoute
+
+const PAGE_TITLE_ID = '_top'
+
+function containsCurrent(entries: typeof sidebar): boolean {
+	return entries.some((item) =>
+		item.type === 'link' ? item.isCurrent : containsCurrent(item.entries),
+	)
+}
+
+const section = sidebar.find(
+	(item) => item.type === 'group' && containsCurrent(item.entries),
+)?.label
+---
+
+{section && <p class="eyebrow">{section}</p>}
+<h1 id={PAGE_TITLE_ID}>{entry.data.title}</h1>
+
+<style>
+  .eyebrow {
+    margin: 0 0 0.85rem;
+    font-size: clamp(1.125rem, 1.45vw, 1.25rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.012em;
+    color: var(--bmad-accent);
+  }
+
+  h1 {
+    margin-top: 1rem;
+    font-size: var(--sl-text-h1);
+    line-height: var(--sl-line-height-headings);
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+
+  .eyebrow + h1 {
+    margin-top: 0;
+  }
+</style>
