@@ -702,7 +702,6 @@ main {
 
 .card-grid .sl-heading-wrapper,
 .card-grid > p {
-	margin-top: 0;
 	padding-block: 1rem;
 	border-bottom: 1px solid var(--sl-color-hairline);
 }
@@ -726,4 +725,15 @@ main {
 
 .content-panel footer .meta:empty {
 	display: none;
+}
+
+@media (max-width: 39.999rem) {
+	.card-grid .sl-heading-wrapper {
+		border-bottom: 0;
+		padding-bottom: 0;
+	}
+
+	.card-grid > p {
+		padding-top: 0.35rem;
+	}
 }
