@@ -1,4 +1,5 @@
-/* BMad Core theme. Fonts load through head links in astro.config.mjs. */
+/* BMad Core theme. See public/bmad-theme-license.txt for the upstream MIT notice.
+   Fonts load through head links in astro.config.mjs. */
 :root {
 	--bmad-white: #ffffff;
 	--bmad-paper: #f6f7f9;

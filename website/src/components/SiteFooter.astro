@@ -79,7 +79,10 @@ const href = (link: string) => (link.startsWith('/') ? `${base}${link}` : link)
     }
   </div>
 
-  <p class="bottom">{BOTTOM.map((line) => <span>{line}</span>)}</p>
+  <p class="bottom">
+    {BOTTOM.map((line) => <span>{line}</span>)}
+    <a href={href('/bmad-theme-license.txt')}>Theme: MIT</a>
+  </p>
   </div>
 </div>
 
@@ -162,6 +165,15 @@ const href = (link: string) => (link.startsWith('/') ? `${base}${link}` : link)
     font-size: 0.6875rem;
     letter-spacing: 0.05em;
     color: #8c96a3;
+  }
+
+  .bottom a {
+    color: inherit;
+    text-underline-offset: 3px;
+  }
+
+  .bottom a:hover {
+    color: #ffffff;
   }
 
   @media (max-width: 32rem) {
