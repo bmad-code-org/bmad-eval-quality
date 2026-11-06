@@ -718,3 +718,12 @@ main {
 		--sl-content-margin-inline: auto;
 	}
 }
+
+.sl-markdown-content .card-grid > .sl-heading-wrapper.level-h3,
+.sl-markdown-content .card-grid > .sl-heading-wrapper.level-h3 + p {
+	margin-top: 0;
+}
+
+.content-panel footer .meta:empty {
+	display: none;
+}

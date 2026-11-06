@@ -7,7 +7,7 @@ import config from 'virtual:starlight/user-config'
 
 const shouldRenderSearch =
 	config.pagefind ||
-	config.components.Search !== 'virtual:starlight/components/Search'
+	config.components.Search !== '@astrojs/starlight/components/Search.astro'
 ---
 <div class="header sl-flex">
 	<div class="title-wrapper sl-flex">
