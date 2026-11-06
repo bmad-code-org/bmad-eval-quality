@@ -113,7 +113,7 @@ export const AnchoredPattern = z
 	.string()
 	.regex(ANCHORED_PATTERN_FORM)
 	.describe(
-		'An anchored ECMA-262 pattern with no flags. Ordinary and named capturing groups, non-capturing groups, positive and negative lookahead, scoped i/m/s modifiers supported by the runtime, alternation, character classes, anchors and greedy or lazy repetition retain boolean matching semantics. Compile refuses backreferences and lookbehind, sources exceeding 4096 UTF-16 code units, and nesting exceeding 64 groups. Native Annex B escapes and literal braces are supported. Matching uses an interpreter with a work budget; nested quantifiers retain their unconditional budget-exhausted fault. This schema checks only initial ^ and final $; compile checks whole-expression anchoring and syntax.',
+		'An anchored ECMA-262 pattern with no flags. Ordinary and named capturing groups, non-capturing groups, positive and negative lookahead, scoped i/m/s modifiers supported by the runtime, alternation, character classes, anchors and greedy or lazy repetition retain boolean matching semantics. Compile refuses backreferences and lookbehind, sources exceeding 4096 UTF-16 code units, and nesting exceeding 64 groups. Octal and identity escapes, control-escape fallback and literal braces retain native behavior. Numeric escapes naming a capture, including forward captures, and named backreferences are refused. Matching uses an interpreter with a work budget; nested quantifiers retain their unconditional budget-exhausted fault. This schema checks only initial ^ and final $; compile checks whole-expression anchoring and syntax.',
 	)
 
 /**

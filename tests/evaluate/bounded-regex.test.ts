@@ -134,7 +134,7 @@ describe('bounded regex semantic compatibility', () => {
 		'^(?<name$',
 		'^(?what)a$',
 		'^(a)\\1$',
-		'^\\k<name>$',
+		'^(?<name>a)\\k<name>$',
 		'^a{4,2}$',
 		'^(a$',
 		'^a)$',
@@ -145,7 +145,49 @@ describe('bounded regex semantic compatibility', () => {
 		expect(() => parseBoundedRegex(pattern)).toThrow()
 	})
 
-	it('bounds source size and parser nesting before native full-pattern compilation', () => {
+	it.each([
+		['^\\1$', '\x01'],
+		['^\\123$', 'S'],
+		['^\\400$', ' 0'],
+		['^\\777$', '?7'],
+		['^\\8$', '8'],
+		['^\\89+$', '899'],
+		['^(a)\\18$', 'a\x018'],
+		['^\\(\\1$', '(\x01'],
+		['^[(]\\1$', '(\x01'],
+		['^(?:a)\\1$', 'a\x01'],
+		['^(?=a)a\\1$', 'a\x01'],
+		['^\\k<name>$', 'k<name>'],
+		['^\\k<$', 'k<'],
+		['^\\k<>$', 'k<>'],
+	])(
+		'accepts legacy escape grammar and matches native: %s',
+		(pattern, matching) => {
+			expect(() => parseBoundedRegex(pattern)).not.toThrow()
+			for (const value of [matching, '', 'a', 'x', `${matching}x`])
+				expect(boundedRegexTest(pattern, value, 1_000_000, 'test')).toBe(
+					new RegExp(pattern).test(value),
+				)
+			expect(regexMatch(matching, pattern, 1_000_000, 'test')).toBe(true)
+		},
+	)
+	it.each([
+		'^(a)\\1$',
+		'^\\1(a)$',
+		'^(a)?\\1$',
+		'^(?=(a))a\\1$',
+		'^(?<name>a)\\1$',
+		'^(?<name>a)\\k<name>$',
+		`^${'(a)'.repeat(12)}\\12$`,
+	])(
+		'rejects an actual backreference under the public policy: %s',
+		(pattern) => {
+			expect(() => new RegExp(pattern)).not.toThrow()
+			expect(() => parseBoundedRegex(pattern)).toThrow('backreferences')
+		},
+	)
+
+	it('bounds source size before native compilation and limits recursive nesting', () => {
 		expect(() => parseBoundedRegex('a'.repeat(REGEX_SOURCE_LIMIT + 1))).toThrow(
 			'source exceeds',
 		)

@@ -1,6 +1,12 @@
 /** Regressions through the built compiler, preflight, scorer and sealer. */
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,6 +31,8 @@ import {
 } from '../preflight/fixtures/observations.ts'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
+const builtCli = join(root, 'dist/cli/main.js')
+const describeBuilt = describe.skipIf(!existsSync(builtCli))
 const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-bot-defects-'))
 afterAll(() => rmSync(scratch, { recursive: true, force: true }))
 const save = (name: string, value: unknown) => {
@@ -33,7 +41,7 @@ const save = (name: string, value: unknown) => {
 	return path
 }
 const cli = (args: string[]) =>
-	spawnSync(process.execPath, [join(root, 'dist/cli/main.js'), ...args], {
+	spawnSync(process.execPath, [builtCli, ...args], {
 		encoding: 'utf8',
 		timeout: 3000,
 	})
@@ -94,7 +102,7 @@ function preflight(selected: boolean, changed: boolean, reversed: boolean) {
 	])
 }
 
-describe('reported defects through the built CLI', () => {
+describeBuilt('reported defects through the built CLI', () => {
 	for (const selected of [false, true])
 		for (const reversed of [false, true]) {
 			it(`preserves stable array changes with selected=${selected}, reversed=${reversed}`, () => {
@@ -289,6 +297,28 @@ describe('reported defects through the built CLI', () => {
 		},
 	)
 
+	it.each(['^(a)\\1$', '^\\1(a)$', '^(?<name>a)\\k<name>$'])(
+		'refuses actual backreferences at compile: %s',
+		(pattern) => {
+			const contract = tutorial()
+			contract.oracles[0].direction.relation = 'regex'
+			contract.oracles[0].direction.evidenceTargets = [
+				'/interactions/create/response-body/noteId',
+			]
+			contract.oracles[0].check = {
+				op: 'regex',
+				operands: [{ pointer: '/interactions/create/response-body/noteId' }],
+				pattern,
+			}
+			const result = cli([
+				'compile',
+				'--in',
+				save('compile-backreference', contract),
+			])
+			expect(result.status, result.stderr).toBe(4)
+			expect(result.stderr).toContain('malformed-operator-expression')
+		},
+	)
 	it.each([`^${'a'.repeat(4096)}$`, `^${'('.repeat(65)}a${')'.repeat(65)}$`])(
 		'refuses unsupported regex grammar at compile: %s',
 		(pattern) => {
@@ -312,6 +342,9 @@ describe('reported defects through the built CLI', () => {
 		'^(?:GET|POST)+$',
 		'^a+b+c+$',
 		'^[\\1]$',
+		'^\\1$',
+		'^\\8$',
+		'^(a)\\18$',
 		'^[(?<=]$',
 		'^\\x61{1,3}$',
 		'^(?=a)a$',
@@ -339,6 +372,7 @@ describe('reported defects through the built CLI', () => {
 			const result = cli(args)
 			expect(result.status).toBe(0)
 			expect(result.stdout).toContain('either absence')
+			expect(result.stdout).toContain('valid, resolvable')
 			expect(result.stdout).toContain('Invalid (exit 3)')
 		}
 	})

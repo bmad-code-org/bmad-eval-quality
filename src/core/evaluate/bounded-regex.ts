@@ -16,10 +16,45 @@ type Node =
 export const REGEX_SOURCE_LIMIT = 4096
 export const REGEX_DEPTH_LIMIT = 64
 
+/** Counts captures outside escaped text and character classes, including forward references. */
+function captureCounts(source: string): { total: number; named: number } {
+	let total = 0
+	let named = 0
+	let inClass = false
+	for (let index = 0; index < source.length; index++) {
+		const character = source[index]
+		if (character === '\\') {
+			index++
+			continue
+		}
+		if (character === '[' && !inClass) {
+			inClass = true
+			continue
+		}
+		if (character === ']' && inClass) {
+			inClass = false
+			continue
+		}
+		if (inClass || character !== '(') continue
+		if (source[index + 1] !== '?') total++
+		else if (
+			source[index + 2] === '<' &&
+			source[index + 3] !== '=' &&
+			source[index + 3] !== '!'
+		) {
+			total++
+			named++
+		}
+	}
+	return { total, named }
+}
+
 /** Public safe subset: character atoms, anchors, groups, alternation and repetition. */
 export function parseBoundedRegex(source: string): Node {
 	if (source.length > REGEX_SOURCE_LIMIT)
 		throw new Error(`regex source exceeds ${REGEX_SOURCE_LIMIT} code units`)
+	new RegExp(source) // Validate context-sensitive escape and group syntax without matching input.
+	const captures = captureCounts(source)
 	let cursor = 0
 	const atom = (text: string, flags: string): Node => ({
 		kind: 'atom',
@@ -87,14 +122,27 @@ export function parseBoundedRegex(source: string): Node {
 							throw new Error('unclosed regex character class')
 					} else if (character === '\\') {
 						const escaped = source[cursor++]
-						if (
-							escaped === undefined ||
-							/[1-9]/.test(escaped) ||
-							(escaped === 'k' && source[cursor] === '<')
-						)
+						if (escaped === undefined)
+							throw new Error('incomplete regex escape')
+						if (escaped === 'k' && captures.named > 0)
 							throw new Error(
-								'regex backreferences are outside the bounded subset',
+								'named backreferences are outside the bounded subset',
 							)
+						if (/^[1-9]$/.test(escaped)) {
+							const decimal = /^\d+/.exec(source.slice(cursor - 1))![0]
+							if (Number(decimal) <= captures.total)
+								throw new Error(
+									'numeric backreferences are outside the bounded subset',
+								)
+							// Annex B falls back to octal (one atom) or decimal identity (one digit).
+							const limit = escaped <= '3' ? 3 : 2
+							let digits = 1
+							if (escaped <= '7')
+								while (digits < limit && /^[0-7]$/.test(source[cursor] ?? '')) {
+									cursor++
+									digits++
+								}
+						}
 						if (
 							escaped === 'x' &&
 							/^[0-9a-fA-F]{2}$/.test(source.slice(cursor, cursor + 2))

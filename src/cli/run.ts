@@ -208,7 +208,8 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
                                   [--out <target>] [--strict]
 
   A verdict requires --isolation-manifest and --evaluator-configuration.
-  Argument parsing accepts either absence; the run is Invalid (exit 3).
+  Argument parsing accepts either absence. With otherwise valid, resolvable
+  inputs, the run is Invalid (exit 3).
 
   --record <path>                   a sealed trial record to ingest; repeat for each trial
   --contract <path>                 the compiled contract to score against
@@ -247,7 +248,8 @@ const IO_RULES = `Inputs and outputs:
   one input may be "-" per invocation. compile and seal each take one input;
   preflight takes three, all required; score takes eight inputs and --record
   may repeat. Argument parsing accepts absent --isolation-manifest and
-  --evaluator-configuration; either absence makes the run Invalid (exit 3).
+  --evaluator-configuration; with otherwise valid, resolvable inputs,
+  either absence makes the run Invalid (exit 3).
   --private-manifest is optional. aggregate-strength takes three,
   all required, and --evidence may repeat. Without --out the artifact goes to
   stdout. An --out ending in .json is a file path; anything else is a
