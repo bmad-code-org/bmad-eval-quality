@@ -759,6 +759,54 @@ The Route A and Route B signatures share one predicate, `all` over an `equality`
 `P-102` and `P-104` are derived inside `qualify.ts` by cloning the authored `P-101`, as at 3.0.0.
 The check on the reconstruction is the transcription: four rendered direction sentences, four qualification details, and two compile-side refusal messages came back identical to bytes this record wrote down at earlier releases.
 
+## Re-verified at 9.0.0, 6 November
+
+The combined defect-fix PR prepared 9.0.0 above implementation commit `6d7f3fab3deb61fbcd3fec018ce80db300cea9cf` with `npm version 9.0.0 --no-git-tag-version`, `npm run generate:version` and `node scripts/stamp-changelog.mjs --version 9.0.0`.
+No tag or npm version existed when preparation started.
+The built CLI printed `9.0.0` before publication.
+
+Fresh scratch inputs were reconstructed from `artifactCommandContract` in `tests/schemas/fixtures/command-contract.ts` and `probeDraft` in `tests/preflight/fixtures/observations.ts`.
+The reconstruction retains the `release-agent-runner` interface, `run-agent` operation, `release-agent run` invocation, `tool-calls` artifact, `/calls` collection with maximum 8, five named legs, and the oracle/signature/witness pointers recorded above.
+Route A nominates the artifact; Route B nominates `stdout`, keeps the bare artifact existence oracle and moves the structured oracle and witnesses to the stream.
+The five observations carry the log on the declared file, and on `stdout` for Route B; the fault leg omits `calls`, the task legs contain different tool names, and the two control observations agree.
+
+The actual command lines, stdout, stderr, input JSON, plans, briefs, verdicts, qualification results and admission results are retained at `/tmp/bmad-eval-owner-major-route/`.
+`run.ts` reconstructs and executes the route, and `commands.json` records each CLI invocation with its expected and observed exit codes.
+The command manifest SHA-256 is `d61dd69b0927a981c10f21bed78d501b6aa20cd785c3c6f0cbc3da87a0226d4e`.
+All fifteen route, boundary and migration CLI invocations returned their expected exit codes; the additional version invocation returned 0.
+Qualification and admission were called against the built 9.0.0 modules and retained separately as `qualification.json` and `admission.json`.
+
+| Invocation | Exit | Observed result |
+| --- | --- | --- |
+| Compile, seal and preflight for Route A | 0 each | Contract 7, brief 2, verdict 2; five legs and six satisfied checks |
+| Compile, seal and preflight for Route B | 0 each | Contract 7, brief 2, verdict 2; five legs and six satisfied checks |
+| Tailed artifact oracle under the stdout descriptor | 4 | `unreachable-check-evidence` |
+| Bare and tailed artifact sensitivity witnesses under the stdout descriptor | 4 each | `unreachable-check-evidence` |
+| Contract stamps 5 and 6 | 5 each | `schema-version-mismatch`, expected contract 7 |
+| Step omitting `interfaceId` | 5 | `schema-parse-failure` |
+| Probe stamp 5 | 5 | `schema-version-mismatch`, expected probe 6 |
+| Current probe omitting `arguments` | 5 | `schema-parse-failure` |
+| Stale probe also omitting `arguments` | 5 | `schema-version-mismatch` before parsing |
+
+`P-101` and `P-102` each returned only `condition-artifact-channel-contract-local` at `.defectSignature.condition.predicate.operands[1].operands[0]`.
+Their details retain the tailed and bare pointer spellings transcribed above.
+`P-103` qualified with an empty failure list, and `sealProbeSet` over `P-101` and `P-103` admitted `P-103` alone.
+`P-104` returned `signature-observable-channel-not-response-side` followed by `condition-channels-underspecified`.
+
+The four direction sentences now read:
+
+```text
+Route A O-001: Check for presence. Evidence: the calls field of the tool-calls it wrote from the run agent command (with the supplied stdin task). The declared polarity expects this relation to hold. One release-note run for one repository. A run whose log names no call at all is treated as a defect.
+Route A O-002: Every element reachable through the calls field of the tool-calls it wrote from the run agent command (with the supplied stdin task) is asserted to meet the declared condition. The declared polarity expects this relation to hold. Every call the agent recorded. A recorded call naming no tool is treated as a defect.
+Route B O-001: Check for presence. Evidence: the tool-calls it wrote from the run agent command (with the supplied stdin task). The declared polarity expects this relation to hold. One release-note run for one repository. A run that wrote no tool-call log is treated as a defect.
+Route B O-002: Every element reachable through the calls field of its standard output from the run agent command (with the supplied stdin task) is asserted to meet the declared condition. The declared polarity expects this relation to hold. Every call the agent recorded. A recorded call naming no tool is treated as a defect.
+```
+
+9.0.0 changes these presence directions to relation-first sentences; the quantifier wording and authored scope remain intact.
+The regex source/depth limits and matching-work enforcement cost this route no migration because it declares no regex.
+The original-coordinate volatile projection fix also leaves this route unchanged because it declares no volatile pointers.
+The guide now pins this verified route to 9.0.0; the contract and probe schema stamps remain 7 and 6.
+
 ## Re-verified at 8.0.0, 8 October
 
 The one-step release run for `bump=major` refused at `doc-claims` on the tree bumped to 8.0.0, because the guide still pinned this route to 7.0.0. Nothing was committed or pushed. The refusal was reproduced on a copy of the tree: `npm version 8.0.0 --no-git-tag-version`, `scripts/generate-version.ts` (`src/index.ts` and `src/core/version.ts` from 7.2.0 to 8.0.0) and `scripts/stamp-changelog.mjs`, the three steps `scripts/release-prepare.mjs` runs before `doc-claims`, then `doc-claims` exited 1 with one disagreement, `"was run end to end against the built CLI at" is no longer true`. The route was run against the built 8.0.0 CLI on that copy before moving the pin.

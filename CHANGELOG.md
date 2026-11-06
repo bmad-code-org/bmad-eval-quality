@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [9.0.0] - 2026-11-06
+
 ### Changed
 
 - Regex source length is capped at 4096 UTF-16 code units and group nesting at 64 levels. Contracts exceeding these resource limits must split or simplify their patterns. The matching work counter can exhaust a budget that the previous estimate accepted. Lookahead, named captures and native legacy syntax retain their boolean semantics.
