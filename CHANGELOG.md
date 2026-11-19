@@ -15,6 +15,10 @@ body.
 - `score --scored-at <timestamp>` pins the instant a contract waiver's `expiresAt` is tested against, so replaying an accepted baseline at the instant it was scored gives the same verdict and the same bytes after a waiver expires. The value takes the `Rfc3339Utc` rules, and a malformed one exits 64 before any input is read. Without the flag, `score` reads the system clock as before. The instant is not recorded in the evidence artifact.
 - `createFixedClockAdapter(instant)` on `eval-quality/adapters`: a `ClockPort` that answers one RFC 3339 UTC instant on every read, so a library caller can pass `runScore` the instant a CLI run was pinned to. A malformed instant throws a `TypeError` at construction.
 
+### Fixed
+
+- Waiver expiry compares the scoring instant and `expiresAt` at the precision they are written in. It used to truncate both to milliseconds, so a waiver expiring one microsecond after the scoring instant was treated as expired.
+
 ## [10.0.0] - 2026-11-19
 
 ### Changed

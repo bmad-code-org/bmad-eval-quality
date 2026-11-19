@@ -360,7 +360,7 @@ function parseCommand(
 	// before any input is read.
 	if (scoredAt !== null && !isScoringInstant(scoredAt)) {
 		return usageError(
-			`--scored-at "${scoredAt}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
+			`--scored-at ${JSON.stringify(scoredAt)} is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
 		)
 	}
 

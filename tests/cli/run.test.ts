@@ -1898,6 +1898,23 @@ describe('run: score --scored-at', () => {
 		expect(artifact?.productionVerdict).toBe('CONCERNS')
 	})
 
+	it('compares the pinned instant with an expiry past the millisecond', async () => {
+		const rules = await gapRules()
+		const files = filesWith(waiversNaming(rules, '2026-11-19T12:00:00.000002Z'))
+		const before = await scoreWith(
+			files,
+			['--scored-at', '2026-11-19T12:00:00.000001Z'],
+			unreadClock(),
+		)
+		const after = await scoreWith(
+			files,
+			['--scored-at', '2026-11-19T12:00:00.000003Z'],
+			unreadClock(),
+		)
+		expect(before.artifact?.productionVerdict).toBe('PASS')
+		expect(after.artifact?.productionVerdict).toBe('CONCERNS')
+	})
+
 	it('absent, the environment clock supplies the instant and is read once', async () => {
 		const rules = await gapRules()
 		const files = filesWith(waiversNaming(rules, EXPIRES_AT))

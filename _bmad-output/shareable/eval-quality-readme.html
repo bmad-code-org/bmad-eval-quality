@@ -747,6 +747,7 @@ npx eval-quality aggregate-strength --evidence evidence-p-001.json \
   --policy policy.json --out ./eval-out
 </code></pre>
 <p>Every command is non-interactive. Without <code>--out</code> the artifact goes to stdout, so a command composes with a pipe. An <code>--out</code> ending in <code>.json</code> is a file path; anything else is a directory, and the artifact lands at <code>&lt;target&gt;/&lt;kind&gt;.json</code>. Diagnostics and errors go to stderr, so stdout carries the artifact alone.</p>
+<p><code>score</code> tests a contract waiver&#39;s <code>expiresAt</code> against the system clock. <code>--scored-at &lt;timestamp&gt;</code> pins that instant to an RFC 3339 UTC timestamp, so replaying an accepted baseline at the instant it was scored keeps its verdict and its bytes after a waiver expires. The instant is not recorded in the artifact.</p>
 <p><strong>Exit codes.</strong></p>
 <div class="table-wrap"><table>
 <thead>

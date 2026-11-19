@@ -514,6 +514,19 @@ describe('cli arguments: score (Story 8.4)', () => {
 		}
 	})
 
+	it('--scored-at quotes a refused value as JSON, so a control character stays on the one diagnostic line', () => {
+		expect(
+			parseUsageError([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at',
+				'2026-11-19T12:00:00Z\n',
+			]).message,
+		).toBe(
+			'--scored-at "2026-11-19T12:00:00Z\\n" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z',
+		)
+	})
+
 	it('--scored-at without a value names the flag', () => {
 		expect(
 			parseUsageError(['score', ...SCORE_REQUIRED, '--scored-at']).message,

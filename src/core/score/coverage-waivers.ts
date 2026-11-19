@@ -20,15 +20,40 @@ import type { CoverageGap } from '../schemas/evidence-artifact.ts'
 
 type Waiver = EvalContract['waivers'][number]
 
-/** `Rfc3339Utc` values in milliseconds since the epoch; parsing is not a clock read. */
-const instantOf = (timestamp: string): number => {
-	const millis = Date.parse(timestamp)
+/**
+ * An `Rfc3339Utc` value split where `Date.parse` stops being exact: the whole
+ * seconds in milliseconds since the epoch, and the fractional digits as
+ * written. `Rfc3339Utc` admits any number of fractional digits and
+ * `Date.parse` keeps three, so two instants a microsecond apart would
+ * otherwise compare equal. Parsing is not a clock read.
+ */
+type Instant = {
+	readonly wholeSecondsMillis: number
+	readonly fraction: string
+}
+
+const FRACTION = /\.(\d+)Z$/
+
+const instantOf = (timestamp: string): Instant => {
+	const fraction = FRACTION.exec(timestamp)
+	const wholeSeconds =
+		fraction === null ? timestamp : `${timestamp.slice(0, fraction.index)}Z`
+	const millis = Date.parse(wholeSeconds)
 	if (Number.isNaN(millis)) {
 		throw new TypeError(
 			`applyCoverageWaivers(): "${timestamp}" is not an RFC 3339 timestamp`,
 		)
 	}
-	return millis
+	return { wholeSecondsMillis: millis, fraction: fraction?.[1] ?? '' }
+}
+
+/** Equal-width digit strings order as their values, so the fractions are padded and compared as text. */
+const isAfter = (left: Instant, right: Instant): boolean => {
+	if (left.wholeSecondsMillis !== right.wholeSecondsMillis) {
+		return left.wholeSecondsMillis > right.wholeSecondsMillis
+	}
+	const width = Math.max(left.fraction.length, right.fraction.length)
+	return left.fraction.padEnd(width, '0') > right.fraction.padEnd(width, '0')
 }
 
 /**
@@ -51,7 +76,7 @@ export function applyCoverageWaivers(
 			waiver.rationale !== null &&
 			waiver.approval !== null &&
 			waiver.expiresAt !== null &&
-			instantOf(waiver.expiresAt) > now,
+			isAfter(instantOf(waiver.expiresAt), now),
 	)
 	return gaps.map((gap) => {
 		if (gap.satisfied) return { ...gap, waiverId: null }
