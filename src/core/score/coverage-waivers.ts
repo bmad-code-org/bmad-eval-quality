@@ -32,7 +32,7 @@ const instantOf = (timestamp: string): number => {
 }
 
 /**
- * Each unsatisfied gap takes the first unexpired waiver, in contract order,
+ * Each unsatisfied gap takes the first complete, unexpired waiver, in contract order,
  * whose `rule` names it. A satisfied gap never takes one: there is nothing
  * to excuse. Gaps arrive and leave in the same order.
  */
@@ -42,9 +42,14 @@ export function applyCoverageWaivers(
 	scoredAt: string,
 ): readonly CoverageGap[] {
 	const now = instantOf(scoredAt)
+	// Only a complete waiver applies. `compile` refuses an incomplete one as
+	// `waiver-incomplete`, but `score` also accepts contracts that never went
+	// through `compile`, so the AD-5 parts are re-read here.
 	const inForce = waivers.filter(
 		(waiver) =>
 			waiver.rule !== null &&
+			waiver.rationale !== null &&
+			waiver.approval !== null &&
 			waiver.expiresAt !== null &&
 			instantOf(waiver.expiresAt) > now,
 	)

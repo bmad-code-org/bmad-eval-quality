@@ -646,7 +646,8 @@ describe('runScore: contract waivers over coverage gaps', () => {
 
 	it('waiving only some gap rules leaves CONCERNS on the rest', async () => {
 		const rules = await gapRulesOf()
-		if (rules.length < 2) return
+		// The case needs a waived rule and at least one unwaived rule.
+		expect(rules.length).toBeGreaterThanOrEqual(2)
 		const [first, ...rest] = rules
 		const result = await run({
 			...withWaivers(waiversFor([first!], '2027-11-18T00:00:00Z')),

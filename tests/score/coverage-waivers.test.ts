@@ -89,6 +89,18 @@ describe('applyCoverageWaivers', () => {
 		expect(gaps[0]?.waiverId).toBe('W-002')
 	})
 
+	it.each(['rule', 'rationale', 'approval', 'expiresAt'] as const)(
+		'an incomplete waiver missing %s excuses nothing',
+		(part) => {
+			const gaps = applyCoverageWaivers(
+				[gap('malformed-input')],
+				[waiver({ [part]: null })],
+				SCORED_AT,
+			)
+			expect(gaps[0]?.waiverId).toBeNull()
+		},
+	)
+
 	it('a satisfied gap takes no waiver: there is nothing to excuse', () => {
 		const gaps = applyCoverageWaivers(
 			[gap('malformed-input', true)],
