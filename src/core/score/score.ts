@@ -202,7 +202,7 @@ export function checkDesignatedOracle(
 	designatedOracleId: string,
 ): string | null {
 	if (!ORACLE_ID_PATTERN.test(designatedOracleId)) {
-		return `--designated-oracle ${JSON.stringify(designatedOracleId)} is not an oracle identifier; expected O- followed by at least three digits`
+		return `--designated-oracle "${designatedOracleId}" is not an oracle identifier; expected O- followed by at least three digits`
 	}
 	const behavior = contract.behaviors.find(
 		(entry) => entry.id === probe.behaviorId,

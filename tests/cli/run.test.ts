@@ -1748,6 +1748,17 @@ describe('run: score --designated-oracle', () => {
 		expect(environment.writes).toEqual([])
 	})
 
+	it('a refused identifier is shown with its control characters escaped and its backslashes as typed', async () => {
+		const { environment, exit } = await scoreWith([
+			'--designated-oracle',
+			'O\\002\u007f',
+		])
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --designated-oracle "O\\002\\u007f" is not an oracle identifier; expected O- followed by at least three digits',
+		])
+	})
+
 	it('a value carrying whitespace is not an oracle identifier', async () => {
 		const { environment, exit } = await scoreWith([
 			'--designated-oracle',

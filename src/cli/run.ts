@@ -466,7 +466,9 @@ async function runCommand(
 			return { outcome: { kind: 'structural-failure' } }
 		}
 		if (error instanceof DesignatedOracleRefusal) {
-			environment.writeDiagnostic(renderUsage(error.message))
+			// The refusal quotes the value as typed; escaping it is the CLI's
+			// job, the same as for every other usage message.
+			environment.writeDiagnostic(renderUsage(shown(error.message)))
 			return { outcome: { kind: 'usage-error' } }
 		}
 		if (error instanceof RuntimeFault) {

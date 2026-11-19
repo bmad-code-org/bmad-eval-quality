@@ -376,6 +376,26 @@ describe('main.ts at the process boundary', () => {
 			}
 		}, 60_000)
 
+		it('a missing --in path carrying a newline stays on the one usage line', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-path-'))
+			try {
+				const missing = join(scratch, 'absent\nname.json')
+				const result = spawnSync(
+					process.execPath,
+					[BUILT_MAIN, 'compile', '--in', missing],
+					{ encoding: 'utf8' },
+				)
+
+				expect(result.status).toBe(EXIT_USAGE)
+				expect(result.stderr).toBe(
+					`eval-quality: usage: open "${join(scratch, 'absent\\nname.json')}": ENOENT\n`,
+				)
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+
 		it('case 168: a missing --out directory is created', (ctx) => {
 			if (!BUILT) return ctx.skip(NEEDS_BUILD)
 			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-path-'))
