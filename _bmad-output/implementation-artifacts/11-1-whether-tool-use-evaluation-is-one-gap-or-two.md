@@ -759,6 +759,49 @@ The Route A and Route B signatures share one predicate, `all` over an `equality`
 `P-102` and `P-104` are derived inside `qualify.ts` by cloning the authored `P-101`, as at 3.0.0.
 The check on the reconstruction is the transcription: four rendered direction sentences, four qualification details, and two compile-side refusal messages came back identical to bytes this record wrote down at earlier releases.
 
+## Re-verified at 10.0.0, 19 November
+
+`npm run release:prepare -- major` bumped `release/v10.0.0`, cut at `5dd7b724d4bf9f220753b36f26398f844f56a444` (the merge of #223), to 10.0.0 and stopped at `check:doc-claims` with one disagreement: the guide still pinned this route to 9.0.0.
+The five release files stayed uncommitted and nothing was pushed.
+`npm run build` exited 0 on that tree and the built CLI printed `10.0.0` before the route ran.
+
+The 9.0.0 scratch directory was gone, so the inputs were reconstructed again from `artifactCommandContract` in `tests/schemas/fixtures/command-contract.ts` and `probeDraft` in `tests/preflight/fixtures/observations.ts`.
+The reconstruction retains the `release-agent-runner` interface, `run-agent` operation, `release-agent run` invocation, `tool-calls` artifact, `/calls` collection with maximum 8, five named legs, and the oracle/signature/witness pointers recorded above.
+A generator imports both fixtures, parses every input against the built schemas, and answers each leg the built `planPreflight` plans: the task legs name different tools, the two control legs agree, and the fault leg's log omits `calls`.
+`P-101` declares `observableChannel: "artifact"` and `P-103` declares `stdout`; `P-102` and `P-104` are cloned from `P-101` inside the runner, as at earlier releases.
+
+The inputs, the generator, the runner, and each invocation's stdout and stderr are retained in a scratch directory outside the working tree.
+`commands.json` records each CLI invocation with its expected and observed exit codes, and its SHA-256 is `a85889d4d84087de7f24f350a1ea0e9a5aca71e8d30c5898840c1a778a212610`.
+All fifteen route, boundary and migration CLI invocations returned their expected exit codes; the additional version invocation returned 0.
+Qualification and admission were called against the built 10.0.0 modules and retained separately as `qualification.json` and `admission.json`.
+
+| Invocation | Exit | Observed result |
+| --- | --- | --- |
+| Compile, seal and preflight for Route A | 0 each | Contract 7, brief 2, verdict 2; five legs and six satisfied checks |
+| Compile, seal and preflight for Route B | 0 each | Contract 7, brief 2, verdict 2; five legs and six satisfied checks |
+| Tailed artifact oracle under the stdout descriptor | 4 | `unreachable-check-evidence` |
+| Bare and tailed artifact sensitivity witnesses under the stdout descriptor | 4 each | `unreachable-check-evidence` |
+| Contract stamps 5 and 6 | 5 each | `schema-version-mismatch`, expected contract 7 |
+| Step omitting `interfaceId` | 5 | `schema-parse-failure` |
+| Probe stamp 5 | 5 | `schema-version-mismatch`, expected probe 6 |
+| Current probe omitting `arguments` | 5 | `schema-parse-failure` |
+| Stale probe also omitting `arguments` | 5 | `schema-version-mismatch` before parsing |
+
+Each pre-flight printed `reduced 5 leg(s): passed` over `leg-changelog-task`, `leg-tag-task`, `preflight-control-observe`, `preflight-control-observe-2` and `tool-log-fault`.
+The four direction sentences match the 9.0.0 transcription byte for byte, checked by `diff` against those four lines.
+The oracle refusal and both witness refusals carry the messages the 1.4.2 and 2.0.0 sections transcribe, behind the `eval-quality: ` prefix the 8.0.0 section notes.
+
+`P-101` and `P-102` each returned only `condition-artifact-channel-contract-local` at `.defectSignature.condition.predicate.operands[1].operands[0]`.
+Their detail strings match the two this record transcribes at 1.4.2, character for character.
+`P-103` qualified with an empty failure list, and `sealProbeSet` over `P-101` and `P-103` admitted `P-103` alone.
+`P-104` returned `signature-observable-channel-not-response-side` followed by `condition-channels-underspecified`, with the first detail the divergence section quotes.
+
+10.0.0 applies contract waivers to coverage gaps at score time.
+`EvidenceArtifact` moves from `schemaVersion` 4 to 5 with a required `CoverageGap.waiverId`, `runScore` requires a `ClockPort`, and the core `score` stage takes `scoredAt`.
+All three live inside `score`, which this route does not run, per Decision 5.
+The built barrel reads `EVIDENCE_ARTIFACT_SCHEMA_VERSION` 5, `EVAL_CONTRACT_SCHEMA_VERSION` 7 and `PROBE_SCHEMA_VERSION` 6, so neither input stamp moved, and both contracts declare `waivers: []`, which leaves the waiver join nothing to read.
+The guide now pins this verified route to 10.0.0 and needed no other edit.
+
 ## Re-verified at 9.0.0, 6 November
 
 The combined defect-fix PR prepared 9.0.0 above implementation commit `6d7f3fab3deb61fbcd3fec018ce80db300cea9cf` with `npm version 9.0.0 --no-git-tag-version`, `npm run generate:version` and `node scripts/stamp-changelog.mjs --version 9.0.0`.
