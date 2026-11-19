@@ -6,8 +6,7 @@
  * make them disagree.
  *
  * The instant is checked once, at construction, against the parser the clock
- * response is read with, so a malformed value fails where it was written and
- * never as a `port-failure` at the read.
+ * response is read with, so a malformed value fails where it was written.
  */
 import { type ClockPort, clockReadParsers } from '../ports/clock-port.ts'
 import { createSystemClockAdapter } from './system-clock-adapter.ts'

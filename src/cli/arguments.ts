@@ -57,7 +57,7 @@ export type ParsedInvocation =
 			readonly designatedOracle: string | null
 			/** `score`'s optional corpus-port root; `null` for every other command, and legal for `score` too when no private reference needs resolving. */
 			readonly corpusRoot: string | null
-			/** `score`'s optional scoring instant, an `Rfc3339Utc` timestamp; `null` when absent, when the system clock answers, and for every other command. */
+			/** `score`'s optional scoring instant, an `Rfc3339Utc` timestamp; `null` when absent, where the system clock answers, and for every other command. */
 			readonly scoredAt: string | null
 			readonly strictInputs: boolean
 			readonly strict: boolean
@@ -355,10 +355,9 @@ function parseCommand(
 	if (missing.length > 0) {
 		return usageError(`${command} requires ${missing.join(', ')}`)
 	}
-	// Refused here, before any input is read, by the rule the clock response
-	// itself is parsed with: a value `runScore` would refuse at the clock read
-	// is a usage error at the command line, never a fault after the inputs
-	// were read.
+	// Checked by the rule the clock response itself is parsed with, so a value
+	// the fixed clock would refuse exits as a usage error naming the flag,
+	// before any input is read.
 	if (scoredAt !== null && !isScoringInstant(scoredAt)) {
 		return usageError(
 			`--scored-at "${scoredAt}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
