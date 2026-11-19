@@ -7,6 +7,7 @@
  */
 
 import { createFixedClockAdapter } from '../adapters/fixed-clock-adapter.ts'
+import { displayToken } from '../application/display-token.ts'
 import {
 	AggregationRefusal,
 	aggregateStrength,
@@ -23,12 +24,7 @@ import {
 	scanJson,
 	seal,
 } from '../application/index.ts'
-import {
-	type Command,
-	type InputKey,
-	type ParsedInvocation,
-	shown,
-} from './arguments.ts'
+import type { Command, InputKey, ParsedInvocation } from './arguments.ts'
 import type { CommandOutcome } from './exit-codes.ts'
 import {
 	EXIT_CODE_TABLE,
@@ -349,7 +345,7 @@ async function collides(
 				resolvedInput === resolvedTarget ||
 				(await environment.sameFile(resolvedInput, resolvedTarget))
 			) {
-				return `--out resolves to "${shown(resolvedTarget)}", which is also --${key} "${shown(value)}"`
+				return `--out resolves to "${displayToken(resolvedTarget)}", which is also --${key} "${displayToken(value)}"`
 			}
 		}
 	}
@@ -466,9 +462,7 @@ async function runCommand(
 			return { outcome: { kind: 'structural-failure' } }
 		}
 		if (error instanceof DesignatedOracleRefusal) {
-			// The refusal quotes the value as typed; escaping it is the CLI's
-			// job, the same as for every other usage message.
-			environment.writeDiagnostic(renderUsage(shown(error.message)))
+			environment.writeDiagnostic(renderUsage(error.message))
 			return { outcome: { kind: 'usage-error' } }
 		}
 		if (error instanceof RuntimeFault) {

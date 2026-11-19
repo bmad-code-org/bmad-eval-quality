@@ -5,8 +5,9 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { displayToken } from '../../src/application/display-token.ts'
 import type { ParsedInvocation } from '../../src/cli/arguments.ts'
-import { COMMANDS, parseArguments, shown } from '../../src/cli/arguments.ts'
+import { COMMANDS, parseArguments } from '../../src/cli/arguments.ts'
 
 type RunInvocation = Extract<ParsedInvocation, { kind: 'run' }>
 type UsageError = Extract<ParsedInvocation, { kind: 'usage-error' }>
@@ -293,15 +294,15 @@ describe('cli arguments: the six usage-error shapes (cases 18-23)', () => {
 })
 
 describe('cli arguments: a typed token stays on one diagnostic line', () => {
-	it('shown escapes C0 and C1 controls and DEL, and leaves everything else as typed', () => {
-		expect(shown('a\nb\rc\td')).toBe('a\\nb\\rc\\td')
-		expect(shown('\u0000\u001b[31m\u007f\u009b')).toBe(
+	it('displayToken escapes C0 and C1 controls and DEL, and leaves everything else as typed', () => {
+		expect(displayToken('a\nb\rc\td')).toBe('a\\nb\\rc\\td')
+		expect(displayToken('\u0000\u001b[31m\u007f\u009b')).toBe(
 			'\\u0000\\u001b[31m\\u007f\\u009b',
 		)
-		expect(shown('C:\\runs\\"quoted" é 日本 🙂')).toBe(
+		expect(displayToken('C:\\runs\\"quoted" é 日本 🙂')).toBe(
 			'C:\\runs\\"quoted" é 日本 🙂',
 		)
-		expect(shown('')).toBe('')
+		expect(displayToken('')).toBe('')
 	})
 
 	const SCORE_ARGV = [
@@ -370,8 +371,8 @@ describe('cli arguments: a typed token stays on one diagnostic line', () => {
 	] as const)('%s', (_label, argv, message) => {
 		const parsed = parseUsageError(argv)
 		expect(parsed.message).toBe(message)
-		// Nothing left for `shown` to escape: the message holds no control character.
-		expect(shown(parsed.message)).toBe(parsed.message)
+		// Nothing left for `displayToken` to escape: the message holds no control character.
+		expect(displayToken(parsed.message)).toBe(parsed.message)
 	})
 })
 

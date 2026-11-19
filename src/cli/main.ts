@@ -13,7 +13,8 @@ import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { createLocalCorpusAdapter } from '../adapters/local-corpus-adapter.ts'
 import { createSystemClockAdapter } from '../adapters/system-clock-adapter.ts'
-import { parseArguments, shown } from './arguments.ts'
+import { displayToken } from '../application/display-token.ts'
+import { parseArguments } from './arguments.ts'
 import type { CommandOutcome } from './exit-codes.ts'
 import { exitCodeFor } from './exit-codes.ts'
 import { renderError, renderUsage } from './render.ts'
@@ -133,7 +134,7 @@ function failureOutcome(error: unknown): CommandOutcome {
 	if (pathError !== null) {
 		writeStderr(
 			renderUsage(
-				`${pathError.syscall ?? 'open'} "${shown(pathError.path ?? '(unknown path)')}": ${pathError.code}`,
+				`${pathError.syscall ?? 'open'} "${displayToken(pathError.path ?? '(unknown path)')}": ${pathError.code}`,
 			),
 		)
 		return { kind: 'usage-error' }

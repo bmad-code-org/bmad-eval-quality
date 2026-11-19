@@ -32,6 +32,7 @@
 import { digestArtifact } from '../canonical/digest.ts'
 import { walkExpression } from '../compile/expression-legality.ts'
 import { evaluateCoverage } from '../coverage/coverage.ts'
+import { displayToken } from '../display-token.ts'
 import {
 	makePointerDenotesCollection,
 	makeResolveOperand,
@@ -202,7 +203,7 @@ export function checkDesignatedOracle(
 	designatedOracleId: string,
 ): string | null {
 	if (!ORACLE_ID_PATTERN.test(designatedOracleId)) {
-		return `--designated-oracle "${designatedOracleId}" is not an oracle identifier; expected O- followed by at least three digits`
+		return `--designated-oracle "${displayToken(designatedOracleId)}" is not an oracle identifier; expected O- followed by at least three digits`
 	}
 	const behavior = contract.behaviors.find(
 		(entry) => entry.id === probe.behaviorId,

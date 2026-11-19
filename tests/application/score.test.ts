@@ -1183,6 +1183,16 @@ describe('runScore: a caller-named designated oracle', () => {
 		},
 	)
 
+	it('a malformed identifier reaches the refusal message on one line, its control characters escaped and its backslashes as typed', async () => {
+		const refusal: unknown = await twoOracle({
+			designatedOracleId: 'O\\bad\nO-002\u001b',
+		}).catch((error: unknown) => error)
+		expect(refusal).toBeInstanceOf(DesignatedOracleRefusal)
+		expect((refusal as Error).message).toBe(
+			'--designated-oracle "O\\bad\\nO-002\\u001b" is not an oracle identifier; expected O- followed by at least three digits',
+		)
+	})
+
 	it('refuses an oracle the contract does not declare', async () => {
 		const undeclared = {
 			...twoOracleScoreContractFixture,

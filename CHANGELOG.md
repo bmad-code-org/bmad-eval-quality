@@ -17,7 +17,7 @@ body.
 
 ### Fixed
 
-- A usage message escapes control characters in the values it quotes, a newline as `\n` and an escape as `\u001b`. A flag value, an unknown flag or command, a positional argument, an `--out` collision path, a path the filesystem refused or a refused `--designated-oracle` containing one used to split the message across stderr lines or pass a terminal escape through. `DesignatedOracleRefusal`'s message now quotes a malformed identifier as typed; it used to JSON-escape it.
+- A usage message escapes control characters in the values it quotes, a newline as `\n` and an escape as `\u001b`. A flag value, an unknown flag or command, a positional argument, an `--out` collision path, a path the filesystem refused or a refused `--designated-oracle` containing one used to split the message across stderr lines or pass a terminal escape through. `DesignatedOracleRefusal`'s message quotes a malformed identifier the same way, so a library caller logging it gets one line too; it used to JSON-escape the identifier, which doubled a backslash and left DEL and C1 controls raw.
 - Waiver expiry compares the scoring instant and `expiresAt` at the precision they are written in. It used to truncate both to milliseconds, so a waiver expiring one microsecond after the scoring instant was treated as expired.
 
 ## [10.0.0] - 2026-11-19
