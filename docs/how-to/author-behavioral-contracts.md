@@ -291,6 +291,7 @@ In this contract, `rubrics: []` declares that no LLM judge evaluates qualitative
 `waivers: []` declares that no discipline rule is waived.
 A waiver names one of the seven discipline rules in `rule`, with a `rationale`, an `approval`, and an RFC 3339 `expiresAt`.
 At score time, a waiver whose `rule` matches an unsatisfied coverage gap, and whose `expiresAt` falls after the scoring instant, takes that gap out of the verdict.
+The scoring instant is the system clock when `score` runs, or the instant `--scored-at` pins.
 The gap stays in `coverageGaps` with the waiver's id in `waiverId`, so the evidence still shows the rule went unsatisfied.
 An expired waiver reinstates its gap.
 The `condition` field is recorded and not evaluated, because the contract format defines no condition language yet.

@@ -5,6 +5,8 @@
  * module touches no stream, no `process`, and no Node builtin, and its tests
  * run in memory.
  */
+
+import { createFixedClockAdapter } from '../adapters/fixed-clock-adapter.ts'
 import {
 	AggregationRefusal,
 	aggregateStrength,
@@ -53,7 +55,10 @@ export type RunEnvironment = {
 	 * the port's own type is read off `RunScoreOptions` instead.
 	 */
 	readonly corpusPort: (root: string) => NonNullable<RunScoreOptions['port']>
-	/** The scoring instant a contract waiver's expiry is tested against. */
+	/**
+	 * The scoring instant a contract waiver's expiry is tested against, when
+	 * `--scored-at` does not pin one.
+	 */
 	readonly clock: RunScoreOptions['clock']
 	/** One per process invocation, the same shape `RunPreflightOptions.signal` already declares. */
 	readonly signal: AbortSignal
@@ -164,7 +169,7 @@ const USAGE = `Usage:
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
-                                  [--designated-oracle <O-id>]
+                                  [--designated-oracle <O-id>] [--scored-at <timestamp>]
                                   [--out <target>] [--strict]
   eval-quality aggregate-strength --evidence <path> [--evidence <path> ...] --floors <path>
                                   --policy <path> [--out <target>] [--strict]
@@ -206,7 +211,7 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
-                                  [--designated-oracle <O-id>]
+                                  [--designated-oracle <O-id>] [--scored-at <timestamp>]
                                   [--out <target>] [--strict]
 
   A verdict requires --isolation-manifest and --evaluator-configuration.
@@ -229,6 +234,9 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
                                      it must be listed by the probe's behavior and declared by the
                                      contract, or the command exits 64; absent, a behavior listing
                                      exactly one oracle designates it and any other count designates none
+  --scored-at <timestamp>           the RFC 3339 UTC instant a contract waiver's expiresAt is tested
+                                     against, such as 2026-11-19T12:00:00Z; absent, the system clock
+                                     at the time of the run. Not recorded in the artifact
   --out <target>                    a .json file path, or a directory taking evidence-artifact.json
   --strict                          promote CONCERNS to exit 1`,
 	'aggregate-strength': `Usage:
@@ -588,7 +596,8 @@ async function runScoreCommand(
 	application: ApplicationFacade,
 	target: string | null,
 ): Promise<RunResult> {
-	const { inputs, corpusDigest, corpusRoot, designatedOracle } = invocation
+	const { inputs, corpusDigest, corpusRoot, designatedOracle, scoredAt } =
+		invocation
 	const records = await Promise.all(
 		(inputs.record ?? []).map(
 			async (source) =>
@@ -660,7 +669,10 @@ async function runScoreCommand(
 			? {}
 			: { designatedOracleId: designatedOracle }),
 		port: corpusRoot === null ? undefined : environment.corpusPort(corpusRoot),
-		clock: environment.clock,
+		// A pinned instant needs no effect, so it is built here; only the
+		// system clock is the environment's.
+		clock:
+			scoredAt === null ? environment.clock : createFixedClockAdapter(scoredAt),
 		signal: environment.signal,
 	})
 

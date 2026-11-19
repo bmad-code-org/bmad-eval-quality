@@ -364,3 +364,44 @@ export const twoOracleSealedRunRecordFixtureForScore: SealedRunRecord = {
 	],
 	observations: [defectFired],
 }
+
+/**
+ * The clean chain at a `low` floor, where the fixture contract's coverage
+ * gaps reach the verdict: CONCERNS unwaived, PASS once a waiver in force
+ * names every gap rule.
+ */
+export const loweredFloorPolicyForScore: ScoringPolicy = {
+	...scoringPolicyFixtureForScore,
+	severityFloor: 'low',
+}
+
+/** One complete waiver per rule, each expiring at `expiresAt`. */
+export const waiversNaming = (
+	rules: readonly string[],
+	expiresAt: string,
+): EvalContract['waivers'] =>
+	rules.map((rule, index) => ({
+		id: `W-${String(index + 1).padStart(3, '0')}`,
+		rule,
+		rationale: 'the operation has no surface this rule can exercise',
+		condition: null,
+		approval: 'test approver, 2026-11-18',
+		expiresAt,
+	}))
+
+/** The record and manifest restate the contract digest, so a waived contract needs both re-pointed. */
+export const waivedScoreFixtures = (
+	waivers: EvalContract['waivers'],
+): {
+	readonly contract: EvalContract
+	readonly record: SealedRunRecord
+	readonly manifest: IsolationManifest
+} => {
+	const contract: EvalContract = { ...scoreContractFixture, waivers }
+	const contractDigest = digestArtifact(contract, 'EvalContract')
+	return {
+		contract,
+		record: { ...sealedRunRecordFixtureForScore, contractDigest },
+		manifest: { ...isolationManifestFixtureForScore, contractDigest },
+	}
+}

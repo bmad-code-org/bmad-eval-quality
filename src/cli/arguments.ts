@@ -4,6 +4,7 @@
  * because every command is non-interactive. Paths are carried through exactly
  * as given and resolved by the caller.
  */
+import { isScoringInstant } from '../adapters/fixed-clock-adapter.ts'
 
 export type Command =
 	| 'compile'
@@ -56,6 +57,8 @@ export type ParsedInvocation =
 			readonly designatedOracle: string | null
 			/** `score`'s optional corpus-port root; `null` for every other command, and legal for `score` too when no private reference needs resolving. */
 			readonly corpusRoot: string | null
+			/** `score`'s optional scoring instant, an `Rfc3339Utc` timestamp; `null` when absent, when the system clock answers, and for every other command. */
+			readonly scoredAt: string | null
 			readonly strictInputs: boolean
 			readonly strict: boolean
 	  }
@@ -145,6 +148,15 @@ const TAKES_DESIGNATED_ORACLE: Readonly<Record<Command, boolean>> = {
 	'aggregate-strength': false,
 }
 
+/** `--scored-at` pins the instant `score` tests a contract waiver's `expiresAt` against; absent, the system clock answers. */
+const TAKES_SCORED_AT: Readonly<Record<Command, boolean>> = {
+	compile: false,
+	seal: false,
+	preflight: false,
+	score: true,
+	'aggregate-strength': false,
+}
+
 const STDIN = '-'
 
 const isRepeatable = (key: InputKey): key is RepeatableInputKey =>
@@ -201,6 +213,7 @@ function parseCommand(
 		| 'corpus-digest'
 		| 'corpus-root'
 		| 'designated-oracle'
+		| 'scored-at'
 	>()
 	for (const key of INPUT_KEYS[command]) valueFlags.set(`--${key}`, key)
 	valueFlags.set('--out', 'out')
@@ -212,6 +225,7 @@ function parseCommand(
 	if (TAKES_DESIGNATED_ORACLE[command]) {
 		valueFlags.set('--designated-oracle', 'designated-oracle')
 	}
+	if (TAKES_SCORED_AT[command]) valueFlags.set('--scored-at', 'scored-at')
 
 	const inputs: Partial<Record<Exclude<InputKey, RepeatableInputKey>, string>> =
 		{}
@@ -225,6 +239,7 @@ function parseCommand(
 	let corpusDigest: string | null = null
 	let corpusRoot: string | null = null
 	let designatedOracle: string | null = null
+	let scoredAt: string | null = null
 	let strictInputs = true
 	let strict = false
 
@@ -291,6 +306,7 @@ function parseCommand(
 			else if (target === 'corpus-digest') corpusDigest = taken.value
 			else if (target === 'corpus-root') corpusRoot = taken.value
 			else if (target === 'designated-oracle') designatedOracle = taken.value
+			else if (target === 'scored-at') scoredAt = taken.value
 			else inputs[target] = taken.value
 			index = taken.next
 			continue
@@ -339,6 +355,15 @@ function parseCommand(
 	if (missing.length > 0) {
 		return usageError(`${command} requires ${missing.join(', ')}`)
 	}
+	// Refused here, before any input is read, by the rule the clock response
+	// itself is parsed with: a value `runScore` would refuse at the clock read
+	// is a usage error at the command line, never a fault after the inputs
+	// were read.
+	if (scoredAt !== null && !isScoringInstant(scoredAt)) {
+		return usageError(
+			`--scored-at "${scoredAt}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
+		)
+	}
 
 	// One stdin cannot serve two readers, so at most one input may be `-`.
 	const fromStdin = INPUT_KEYS[command].flatMap((key) => {
@@ -372,6 +397,7 @@ function parseCommand(
 		corpusDigest,
 		designatedOracle,
 		corpusRoot,
+		scoredAt,
 		strictInputs,
 		strict,
 	}

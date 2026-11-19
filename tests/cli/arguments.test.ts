@@ -60,6 +60,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			corpusDigest: null,
 			designatedOracle: null,
 			corpusRoot: null,
+			scoredAt: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -85,6 +86,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			corpusDigest: null,
 			designatedOracle: null,
 			corpusRoot: null,
+			scoredAt: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -112,6 +114,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			corpusDigest: null,
 			designatedOracle: null,
 			corpusRoot: null,
+			scoredAt: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -392,6 +395,8 @@ describe('cli arguments: score (Story 8.4)', () => {
 				'/corpus',
 				'--designated-oracle',
 				'O-002',
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
 				'--out',
 				'artifacts/',
 				'--strict',
@@ -415,6 +420,7 @@ describe('cli arguments: score (Story 8.4)', () => {
 				'sha256:0000000000000000000000000000000000000000000000000000000000000001',
 			designatedOracle: 'O-002',
 			corpusRoot: '/corpus',
+			scoredAt: '2026-11-19T12:00:00Z',
 			strictInputs: true,
 			strict: true,
 		})
@@ -469,6 +475,96 @@ describe('cli arguments: score (Story 8.4)', () => {
 			expect(
 				parseUsageError([command, '--designated-oracle', 'O-001']).message,
 			).toContain('--designated-oracle')
+		}
+	})
+
+	it('--scored-at is optional and reads null when absent', () => {
+		expect(parseRun(['score', ...SCORE_REQUIRED]).scoredAt).toBeNull()
+	})
+
+	it('--scored-at takes the space and the equals forms', () => {
+		expect(
+			parseRun(['score', ...SCORE_REQUIRED, '--scored-at', '2026-11-19T12:00Z'])
+				.scoredAt,
+		).toBe('2026-11-19T12:00Z')
+		expect(
+			parseRun([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at=2026-11-19T12:00:00.250Z',
+			]).scoredAt,
+		).toBe('2026-11-19T12:00:00.250Z')
+	})
+
+	it('--scored-at refuses a value Rfc3339Utc refuses, naming the flag and the value', () => {
+		for (const value of [
+			'2026-11-19T12:00:00+00:00',
+			'2026-11-19T12:00:00',
+			'2026-11-19',
+			'2026-02-30T00:00:00Z',
+			'2026-11-19 12:00:00Z',
+			'now',
+		]) {
+			expect(
+				parseUsageError(['score', ...SCORE_REQUIRED, `--scored-at=${value}`])
+					.message,
+			).toBe(
+				`--scored-at "${value}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
+			)
+		}
+	})
+
+	it('--scored-at without a value names the flag', () => {
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--scored-at']).message,
+		).toBe('--scored-at requires a value')
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--scored-at=']).message,
+		).toBe('--scored-at was given an empty value')
+	})
+
+	it('--scored-at accepts an identical repeat and refuses two different instants', () => {
+		expect(
+			parseRun([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
+				'--scored-at=2026-11-19T12:00:00Z',
+			]).scoredAt,
+		).toBe('2026-11-19T12:00:00Z')
+		expect(
+			parseUsageError([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
+				'--scored-at',
+				'2026-11-20T12:00:00Z',
+			]).message,
+		).toBe(
+			'--scored-at given twice with different values, "2026-11-19T12:00:00Z" and "2026-11-20T12:00:00Z"',
+		)
+	})
+
+	it('a missing required flag is reported before a malformed --scored-at', () => {
+		expect(
+			parseUsageError(['score', '--record', 'record.json', '--scored-at=now'])
+				.message,
+		).toContain('score requires')
+	})
+
+	it('no other command takes --scored-at', () => {
+		for (const command of [
+			'compile',
+			'seal',
+			'preflight',
+			'aggregate-strength',
+		]) {
+			expect(
+				parseUsageError([command, '--scored-at', '2026-11-19T12:00:00Z'])
+					.message,
+			).toBe(`unknown flag "--scored-at" for ${command}`)
 		}
 	})
 
