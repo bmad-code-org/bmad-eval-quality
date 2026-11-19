@@ -510,12 +510,40 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 					satisfactionPredicate: 's',
 					satisfied: false,
 					severity: 'material' as const,
+					waiverId: null,
 				},
 			],
 		}
 		const resolution = resolveProductionVerdict(productionOf(body))
 		expect(resolution.verdict).toBe('CONCERNS')
 		expect(resolution.strictPromotable).toBe(true)
+	})
+
+	it('a waived coverage gap at or above the floor is recorded and does not move either verdict', () => {
+		const waivedGap = {
+			rule: 'malformed-input',
+			relevancePredicate: 'p',
+			satisfactionPredicate: 's',
+			satisfied: false,
+			severity: 'critical' as const,
+			waiverId: 'W-001',
+		}
+		const body = { ...baseline(), coverageGaps: [waivedGap] }
+		expect(resolveProductionVerdict(productionOf(body)).verdict).toBe('PASS')
+		expect(resolveContractVerdict(contractOf(body))).toEqual({
+			verdict: 'PASS',
+			exitCode: 0,
+			strictPromotable: true,
+			basis: [],
+		})
+
+		const reinstated = {
+			...baseline(),
+			coverageGaps: [{ ...waivedGap, waiverId: null }],
+		}
+		expect(resolveContractVerdict(contractOf(reinstated)).basis).toEqual([
+			'coverage gap malformed-input unsatisfied at or above the severity floor',
+		])
 	})
 
 	// Contract-scoring recommendation: the recommendation never selects the rung.

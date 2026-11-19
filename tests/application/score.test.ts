@@ -4,15 +4,20 @@
  * 8.3 routed here. One clean fixture chain reused across every I/O Matrix
  * row, mutated one field at a time -- see `fixtures/score-fixtures.ts`.
  */
+
 import { describe, expect, it, vi } from 'vitest'
 import { POLICY } from '../../scripts/worked-example-shared.ts'
 import {
 	DesignatedOracleRefusal,
 	runScore,
 } from '../../src/application/score.ts'
+import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
-import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
+import {
+	EVAL_CONTRACT_SCHEMA_VERSION,
+	type EvalContract,
+} from '../../src/core/schemas/eval-contract.ts'
 import {
 	EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
 	EvaluatorConfiguration,
@@ -41,7 +46,9 @@ import {
 import { SEALED_RUN_RECORD_SCHEMA_VERSION } from '../../src/core/schemas/sealed-run-record.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
 import { compareDominance } from '../../src/core/score/strength.ts'
+import type { ClockPort } from '../../src/ports/clock-port.ts'
 import type { CorpusPort } from '../../src/ports/corpus-port.ts'
+import { FIXED_SCORED_AT, fixedClock } from '../fixtures/fixed-clock.ts'
 import {
 	canary,
 	defectFinding,
@@ -98,6 +105,7 @@ const run = (overrides: Partial<Parameters<typeof runScore>[0]> = {}) =>
 		privateManifest: null,
 		corpusDigest: corpusDigestFixture,
 		port: DEFAULT_PORT,
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 		...overrides,
 	})
@@ -530,6 +538,132 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 	})
 })
 
+describe('runScore: contract waivers over coverage gaps', () => {
+	const loweredFloor = {
+		...scoringPolicyFixtureForScore,
+		severityFloor: 'low',
+	} as const
+	const clockAt = (now: string): ClockPort => ({
+		read: vi.fn(async () => ({ now })),
+	})
+	const SCORED_AT = '2026-11-19T12:00:00Z'
+
+	/** The record and manifest restate the contract digest, so a waived contract needs both re-pointed. */
+	const withWaivers = (waivers: EvalContract['waivers']) => {
+		const contract: EvalContract = { ...scoreContractFixture, waivers }
+		const contractDigest = digestArtifact(contract, 'EvalContract')
+		return {
+			contract,
+			record: { ...sealedRunRecordFixtureForScore, contractDigest },
+			manifest: { ...isolationManifestFixtureForScore, contractDigest },
+		}
+	}
+
+	const gapRulesOf = async (): Promise<readonly string[]> => {
+		const baseline = await run({
+			policy: loweredFloor,
+			clock: clockAt(SCORED_AT),
+		})
+		const rules = baseline.artifact?.coverageGaps.map((gap) => gap.rule) ?? []
+		expect(rules.length).toBeGreaterThan(0)
+		return rules
+	}
+
+	const waiversFor = (rules: readonly string[], expiresAt: string) =>
+		rules.map((rule, index) => ({
+			id: `W-${String(index + 1).padStart(3, '0')}`,
+			rule,
+			rationale: 'the operation has no surface this rule can exercise',
+			condition: null,
+			approval: 'test approver, 2026-11-18',
+			expiresAt,
+		}))
+
+	it('an unexpired waiver naming every unsatisfied gap rule resolves PASS and keeps each gap visible as waived', async () => {
+		const rules = await gapRulesOf()
+		const waivers = waiversFor(rules, '2027-11-18T00:00:00Z')
+		const result = await run({
+			...withWaivers(waivers),
+			policy: loweredFloor,
+			clock: clockAt(SCORED_AT),
+		})
+		expect(result.ladder.verdict).toBe('PASS')
+		expect(result.ladder.basis).toEqual([])
+		expect(result.artifact?.coverageGaps).toEqual(
+			rules.map((rule, index) =>
+				expect.objectContaining({
+					rule,
+					satisfied: false,
+					waiverId: waivers[index]?.id,
+				}),
+			),
+		)
+	})
+
+	it('an expired waiver does not apply: the gap stays in the verdict basis and carries no waiver id', async () => {
+		const rules = await gapRulesOf()
+		const result = await run({
+			...withWaivers(waiversFor(rules, '2026-11-19T11:59:59Z')),
+			policy: loweredFloor,
+			clock: clockAt(SCORED_AT),
+		})
+		expect(result.ladder.verdict).toBe('CONCERNS')
+		expect(result.ladder.basis).toEqual(
+			rules.map(
+				(rule) =>
+					`coverage gap ${rule} unsatisfied at or above the severity floor`,
+			),
+		)
+		expect(result.artifact?.coverageGaps.map((gap) => gap.waiverId)).toEqual(
+			rules.map(() => null),
+		)
+	})
+
+	it('a waiver expiring exactly at the scoring instant has expired', async () => {
+		const rules = await gapRulesOf()
+		const result = await run({
+			...withWaivers(waiversFor(rules, SCORED_AT)),
+			policy: loweredFloor,
+			clock: clockAt(SCORED_AT),
+		})
+		expect(result.ladder.verdict).toBe('CONCERNS')
+	})
+
+	it('a waiver naming a different rule leaves the gap in the verdict basis', async () => {
+		const rules = await gapRulesOf()
+		const result = await run({
+			...withWaivers(
+				waiversFor(
+					rules.map(() => 'not-a-gap-rule'),
+					'2027-11-18T00:00:00Z',
+				),
+			),
+			policy: loweredFloor,
+			clock: clockAt(SCORED_AT),
+		})
+		expect(result.ladder.verdict).toBe('CONCERNS')
+	})
+
+	it('waiving only some gap rules leaves CONCERNS on the rest', async () => {
+		const rules = await gapRulesOf()
+		// The case needs a waived rule and at least one unwaived rule.
+		expect(rules.length).toBeGreaterThanOrEqual(2)
+		const [first, ...rest] = rules
+		const result = await run({
+			...withWaivers(waiversFor([first!], '2027-11-18T00:00:00Z')),
+			policy: loweredFloor,
+			clock: clockAt(SCORED_AT),
+		})
+		expect(result.ladder.verdict).toBe('CONCERNS')
+		expect(result.ladder.basis).toEqual(
+			rest.map(
+				(rule) =>
+					`coverage gap ${rule} unsatisfied at or above the severity floor`,
+			),
+		)
+	})
+})
+
 describe('runScore: the two digest-verification obligations', () => {
 	it('a private-artifact-manifest entry whose resolved bytes disagree invalidates the run', async () => {
 		const port = fakeCorpusPort({
@@ -696,6 +830,7 @@ describe('runScore: the orchestration order and the two hardcoded value paramete
 			const call = scoreSpy.mock.calls[0]
 			expect(call?.[5]).toBe('none')
 			expect(call?.[6]).toBe(false)
+			expect(call?.[7]).toBe(FIXED_SCORED_AT)
 		} finally {
 			vi.restoreAllMocks()
 		}
@@ -1005,10 +1140,10 @@ describe('runScore: a caller-named designated oracle', () => {
 		const scoreSpy = vi.spyOn(scoreModule, 'score')
 		try {
 			await twoOracle({ designatedOracleId: 'O-002' })
-			expect(scoreSpy.mock.calls[0]?.[7]).toBe('O-002')
+			expect(scoreSpy.mock.calls[0]?.[8]).toBe('O-002')
 			scoreSpy.mockClear()
 			await run()
-			expect(scoreSpy.mock.calls[0]?.[7]).toBeUndefined()
+			expect(scoreSpy.mock.calls[0]?.[8]).toBeUndefined()
 		} finally {
 			vi.restoreAllMocks()
 		}

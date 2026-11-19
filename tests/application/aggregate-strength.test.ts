@@ -196,7 +196,7 @@ describe('the evidence schema version is read before the shape', () => {
 	}
 
 	it('names a shape-compatible artifact stamped for another version', async () => {
-		const evidence = [await withStamp(5)]
+		const evidence = [await withStamp(6)]
 		const fault = faultOf(() =>
 			aggregateStrength({
 				evidence,
@@ -206,7 +206,7 @@ describe('the evidence schema version is read before the shape', () => {
 		)
 		expect(fault.code).toBe('schema-version-mismatch')
 		expect(fault.artifactPath).toBe('EvidenceArtifact[0].schemaVersion')
-		expect(fault.message).toContain('this build reads 4')
+		expect(fault.message).toContain('this build reads 5')
 	})
 
 	it('names the stamp of an artifact whose shape is the previous version', async () => {

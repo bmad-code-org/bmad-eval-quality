@@ -214,6 +214,9 @@ const passingPreflight: PreflightVerdict = {
 	checks: [],
 }
 
+/** The scoring instant contract-waiver expiry is tested against. */
+const SCORED_AT = '2026-01-01T00:00:00Z'
+
 const scoreOf = (
 	contract: EvalContract,
 	trials: readonly ValidatedObservations[],
@@ -221,7 +224,16 @@ const scoreOf = (
 	preflightVerdict: PreflightVerdict = passingPreflight,
 	scoringPolicy: ScoringPolicy = policy,
 ) =>
-	score(contract, trials, probe, preflightVerdict, scoringPolicy, 'none', false)
+	score(
+		contract,
+		trials,
+		probe,
+		preflightVerdict,
+		scoringPolicy,
+		'none',
+		false,
+		SCORED_AT,
+	)
 
 describe('score: the I/O & Edge-Case Matrix', () => {
 	it('Matrix row 1: a clean trial set resolves PASS with an empty basis', () => {
@@ -868,6 +880,7 @@ describe('score: a caller-named designated oracle', () => {
 			policy,
 			'none',
 			false,
+			SCORED_AT,
 			designatedOracleId,
 		)
 

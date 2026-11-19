@@ -21,7 +21,7 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
 	'eval-contract': 1342,
 	'evaluator-configuration': 69,
-	'evidence-artifact': 548,
+	'evidence-artifact': 556,
 	'isolation-manifest': 141,
 	'preflight-verdict': 38,
 	'private-artifact-manifest': 31,
@@ -36,7 +36,7 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	additionalProperties: 362,
-	anyOf: 175,
+	anyOf: 177,
 	const: 122,
 	enum: 87,
 	exclusiveMinimum: 2,
@@ -49,11 +49,11 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	minProperties: 2,
 	minimum: 140,
 	oneOf: 28,
-	pattern: 223,
+	pattern: 225,
 	prefixItems: 24,
 	propertyNames: 69,
 	required: 293,
-	type: 1555,
+	type: 1559,
 }
 
 /**
@@ -62,7 +62,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3586
+export const CENSUS_TOTAL = 3594
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {

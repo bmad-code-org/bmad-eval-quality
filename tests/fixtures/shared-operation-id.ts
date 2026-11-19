@@ -11,6 +11,7 @@
  * oracle reads the step of one interface, so evidence that crosses over from
  * the other interface changes a result.
  */
+
 import { runScore } from '../../src/application/score.ts'
 import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
@@ -32,6 +33,7 @@ import {
 import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import { qualifiedProbe } from '../score/fixtures/probe-witness.ts'
+import { fixedClock } from './fixed-clock.ts'
 
 export const SHARED_OPERATION_ID = 'read-note'
 export const SHARED_TOOL_OPERATION_ID = 'search-notes'
@@ -476,6 +478,7 @@ export const scoreSharedOperation = (options: {
 		policy: scoringPolicyFixtureForScore,
 		privateManifest: null,
 		corpusDigest: corpusDigestFixture,
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 	})
 }

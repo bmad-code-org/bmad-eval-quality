@@ -455,6 +455,18 @@
                   "material",
                   "critical"
                 ]
+              },
+              "waiverId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^W-[0-9]{3,}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The contract waiver honoured over this gap, or `null` when none applies. A waiver applies when its `rule` names this gap's `rule` and its `expiresAt` falls after the scoring instant; an expired waiver reinstates its gap (AD-21). A waived gap stays in this list, so the record still shows the rule went unsatisfied, but it leaves AD-21's coverage-gap CONCERNS row. Required, not optional, which makes this the `schemaVersion` 4 -> 5 BREAKING bump under AD-11."
               }
             },
             "required": [
@@ -462,7 +474,8 @@
               "relevancePredicate",
               "satisfactionPredicate",
               "satisfied",
-              "severity"
+              "severity",
+              "waiverId"
             ],
             "additionalProperties": false
           }
@@ -1176,6 +1189,18 @@
                   "material",
                   "critical"
                 ]
+              },
+              "waiverId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^W-[0-9]{3,}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The contract waiver honoured over this gap, or `null` when none applies. A waiver applies when its `rule` names this gap's `rule` and its `expiresAt` falls after the scoring instant; an expired waiver reinstates its gap (AD-21). A waived gap stays in this list, so the record still shows the rule went unsatisfied, but it leaves AD-21's coverage-gap CONCERNS row. Required, not optional, which makes this the `schemaVersion` 4 -> 5 BREAKING bump under AD-11."
               }
             },
             "required": [
@@ -1183,7 +1208,8 @@
               "relevancePredicate",
               "satisfactionPredicate",
               "satisfied",
-              "severity"
+              "severity",
+              "waiverId"
             ],
             "additionalProperties": false
           }

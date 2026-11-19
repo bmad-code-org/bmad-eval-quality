@@ -662,10 +662,26 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	systemRecommendationNote: null,
 }
 
+/** A version-4 coverage gap: no `waiverId`, so the version-5 parser refuses it. */
+const COVERAGE_GAP_AT_4 = {
+	rule: 'whole-body',
+	relevancePredicate: 'whole-body-relevance',
+	satisfactionPredicate: 'whole-body-satisfaction',
+	satisfied: false,
+	severity: 'material',
+}
+
 const EVIDENCE_ARTIFACT_AT_4: Readonly<Record<string, unknown>> = {
 	...EVIDENCE_ARTIFACT_AT_3,
 	schemaVersion: 4,
 	reducedProbeOutcomes: [],
+	coverageGaps: [COVERAGE_GAP_AT_4],
+}
+
+const EVIDENCE_ARTIFACT_AT_5: Readonly<Record<string, unknown>> = {
+	...EVIDENCE_ARTIFACT_AT_4,
+	schemaVersion: 5,
+	coverageGaps: [{ ...COVERAGE_GAP_AT_4, waiverId: null }],
 }
 
 const SCORING_POLICY_AT_2: Readonly<Record<string, unknown>> = {
@@ -944,9 +960,9 @@ const SHAPES: readonly {
 		artifact: 'evidence-artifact',
 		current: EVIDENCE_ARTIFACT_SCHEMA_VERSION,
 		parse: (value) => EvidenceArtifact.safeParse(value),
-		predecessor:
-			'declares no reduced per-probe outcomes and no trialIndex on detailed outcomes',
+		predecessor: 'carries no `waiverId` on a coverage gap',
 		shapeByVersion: {
+			5: (stamp) => ({ ...EVIDENCE_ARTIFACT_AT_5, schemaVersion: stamp }),
 			4: (stamp) => ({ ...EVIDENCE_ARTIFACT_AT_4, schemaVersion: stamp }),
 			3: (stamp) => {
 				const artifact: Record<string, unknown> = {

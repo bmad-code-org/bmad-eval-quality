@@ -242,7 +242,7 @@
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "scoredProbeId": "P-001",
   "scoringVersion": "sha256:c177e6fe4820c6706b2d6ea64de5543fa822c512aa98e56977dd6e6c2493da4d",
   "scoringVersionInputs": {

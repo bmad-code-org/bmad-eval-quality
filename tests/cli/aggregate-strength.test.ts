@@ -5,6 +5,7 @@
  * routing, and the same behavior against the built binary. Evidence comes
  * from the real `runScore` chain.
  */
+
 import { spawnSync } from 'node:child_process'
 import {
 	existsSync,
@@ -40,6 +41,7 @@ import {
 	REAL_POLICY,
 	scoreDefectProbe,
 } from '../aggregate/fixtures/real-evidence.ts'
+import { fixedClock } from '../fixtures/fixed-clock.ts'
 
 const VERSION = '9.9.9-test'
 const POLICY_JSON = JSON.stringify(REAL_POLICY)
@@ -88,6 +90,7 @@ const environmentOf = (files: Readonly<Record<string, string>>): Fake => {
 		corpusPort: () => {
 			throw new Error('aggregate-strength resolves no private reference')
 		},
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 		version: VERSION,
 	}

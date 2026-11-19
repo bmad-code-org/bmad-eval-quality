@@ -20,6 +20,7 @@
  * public storage, so `runScore` resolves no private reference and takes no
  * `CorpusPort`.
  */
+
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/application/compile.ts'
 import { runPreflight } from '../../src/application/preflight.ts'
@@ -32,6 +33,7 @@ import type {
 	JsonValue,
 } from '../../src/core/schemas/primitives.ts'
 import type { SealedRunRecord } from '../../src/core/schemas/sealed-run-record.ts'
+import { fixedClock } from '../fixtures/fixed-clock.ts'
 import { mcpEchoPort } from '../preflight/fixtures/probe-port.ts'
 import { toolCallProbe } from '../schemas/fixtures/artifact-fixtures.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
@@ -246,6 +248,7 @@ const chain = async () => {
 		policy: scoringPolicyFixtureForScore,
 		privateManifest: null,
 		corpusDigest: corpusDigestFixture,
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 	})
 	return { contract, brief, verdict, scored }

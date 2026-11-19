@@ -49,7 +49,7 @@ never promotes.
 | `lineage-chain-inconsistent` | FAIL | a presented lineage chain internally inconsistent under AD-12 | no | 2 |
 | `evaluator-recommendation-fail` | FAIL | an ingested evaluator recommendation of FAIL | no | 2 |
 | `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no | 0 |
-| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no | 0 |
+| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 that no unexpired waiver covers | no | 0 |
 | `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no | 0 |
 | `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no | 0 |
 | `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes | 0 |
@@ -136,7 +136,7 @@ Over the 34 resolved production fixture cases.
 | `evidence-internally-inconsistent` | FAIL | evidence internally inconsistent under AD-17 | no | 2 |
 | `lineage-chain-inconsistent` | FAIL | a presented lineage chain internally inconsistent under AD-12 | no | 2 |
 | `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no | 0 |
-| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no | 0 |
+| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 that no unexpired waiver covers | no | 0 |
 | `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no | 0 |
 | `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no | 0 |
 | `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes | 0 |

@@ -1529,7 +1529,7 @@
 						"module": "scripts/doc-claim-sources.ts",
 						"export": "portsTableIsCurrent"
 					},
-					"reason": "reads whether EnvironmentProbePort and CorpusPort are threaded under src/application/, and ClockPort and FileSystemPort are not; a content hash of an existing file could not settle the table's two \"No\" rows, which are claims of absence"
+					"reason": "reads whether EnvironmentProbePort, CorpusPort and ClockPort are threaded under src/application/, and FileSystemPort is not; a content hash of an existing file could not settle the table's \"No\" row, which is a claim of absence"
 				}
 			]
 		},

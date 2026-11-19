@@ -633,13 +633,17 @@ const CONCERNS_ROWS_SHARED: readonly LadderConditionRow[] = [
 		id: 'coverage-gap-at-or-above-floor',
 		rung: 'CONCERNS',
 		guard:
-			'an unsatisfied coverage gap at or above the severity floor under AD-20',
+			'an unsatisfied coverage gap at or above the severity floor under AD-20 that no unexpired waiver covers',
 		evidenceCondition: false,
+		// A waived gap is recorded and does not move the verdict, the same
+		// footing AD-21 gives a gap below the floor. `waiverId` is set only for
+		// an unexpired waiver, so an expired one reinstates its gap here.
 		reasons: (inputs) =>
 			inputs.coverageGaps
 				.filter(
 					(gap) =>
 						!gap.satisfied &&
+						gap.waiverId === null &&
 						atOrAboveFloor(gap.severity, inputs.severityFloor),
 				)
 				.map(

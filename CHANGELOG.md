@@ -10,6 +10,15 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- `EvidenceArtifact` is now `schemaVersion` 5. Each `coverageGaps` entry carries a required `waiverId`, the id of the contract waiver honoured over that gap or `null`. A version-4 artifact no longer parses, and readers of evidence artifacts need this release.
+- `runScore` takes a required `clock` (`ClockPort`) and reads it once for the scoring instant. The core `score` stage takes that instant as `scoredAt`, between `evaluationFault` and `designatedOracleId`. The CLI wires `createSystemClockAdapter()`.
+
+### Fixed
+
+- Contract waivers now apply to coverage gaps. A non-expired waiver whose `rule` matches an unsatisfied coverage gap takes that gap out of the verdict basis, so a contract whose only gaps are waived scores PASS instead of CONCERNS. The gap stays in `coverageGaps` with the waiver's id. A waiver expiring at or before the scoring instant does not apply and the gap is reinstated. `condition` is recorded and not evaluated.
+
 ## [9.0.0] - 2026-11-06
 
 ### Changed

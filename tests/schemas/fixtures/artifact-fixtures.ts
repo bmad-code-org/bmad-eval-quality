@@ -1002,7 +1002,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -1141,6 +1141,7 @@ const evidenceCommon = {
 			satisfactionPredicate: 'sibling-cross-check-satisfaction',
 			satisfied: false,
 			severity: 'material',
+			waiverId: null,
 		},
 	],
 	strength: {

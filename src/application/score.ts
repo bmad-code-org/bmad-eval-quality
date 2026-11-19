@@ -53,6 +53,7 @@ import {
 import type { LadderResolution } from '../core/score/ladder.ts'
 import type { QualificationResult } from '../core/score/qualification.ts'
 import { checkDesignatedOracle, score } from '../core/score/score.ts'
+import { type ClockPort, clockReadParsers } from '../ports/clock-port.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
 import {
 	checkArtifactVersion,
@@ -97,6 +98,13 @@ export type RunScoreOptions = {
 	 * resolves no private reference.
 	 */
 	readonly port?: CorpusPort
+	/**
+	 * Read once per call for the scoring instant a contract waiver's
+	 * `expiresAt` is tested against. Required: `core/` reads no clock (AD-1),
+	 * and a defaulted instant would let an expired waiver keep excusing its
+	 * gap.
+	 */
+	readonly clock: ClockPort
 	readonly signal: AbortSignal
 }
 
@@ -385,7 +393,7 @@ export async function runScore(
 	const policy = parsePolicy(options.policy)
 	const privateManifest = parsePrivateManifest(options.privateManifest)
 	const corpusDigest = parseCorpusDigest(options.corpusDigest)
-	const { designatedOracleId, port, signal } = options
+	const { designatedOracleId, port, clock, signal } = options
 
 	if (designatedOracleId !== undefined) {
 		const refusal = checkDesignatedOracle(contract, probe, designatedOracleId)
@@ -409,18 +417,29 @@ export async function runScore(
 	const validated = records.map((record) =>
 		ingest(record, manifest, configuration),
 	)
+	const { now: scoredAt } = await invokePort({
+		request: {},
+		requestParser: clockReadParsers.request,
+		responseParser: clockReadParsers.response,
+		port: clock.read,
+		signal,
+		requestPath: 'ClockReadRequest',
+		responsePath: 'ClockReadResponse',
+	})
 	const scored = score(
 		contract,
 		validated,
 		probe,
 		preflightVerdict,
 		policy,
-		// Neither has a declared-input source: the contract declares no
-		// waiver and the run record carries no AD-26 evaluation fault field,
-		// mirroring `worked-example-target.ts`'s own precedent for the
-		// identical gap.
+		// Neither has a declared-input source: no oracle-level waiver state is
+		// declared anywhere (contract waivers name AD-20 rules and apply to
+		// coverage gaps through `scoredAt` below), and the run record carries
+		// no AD-26 evaluation fault field, mirroring `worked-example-target.ts`'s
+		// own precedent for the identical gap.
 		'none',
 		false,
+		scoredAt,
 		designatedOracleId,
 	)
 

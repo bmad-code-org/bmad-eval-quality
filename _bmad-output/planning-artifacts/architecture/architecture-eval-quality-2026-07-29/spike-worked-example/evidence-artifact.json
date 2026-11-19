@@ -13,21 +13,24 @@
       "rule": "success-indicator-separation",
       "satisfactionPredicate": "success-indicator-separation-satisfaction",
       "satisfied": false,
-      "severity": "critical"
+      "severity": "critical",
+      "waiverId": null
     },
     {
       "relevancePredicate": "malformed-input-relevance",
       "rule": "malformed-input",
       "satisfactionPredicate": "malformed-input-satisfaction",
       "satisfied": false,
-      "severity": "critical"
+      "severity": "critical",
+      "waiverId": null
     },
     {
       "relevancePredicate": "sibling-cross-check-relevance",
       "rule": "sibling-cross-check",
       "satisfactionPredicate": "sibling-cross-check-satisfaction",
       "satisfied": false,
-      "severity": "critical"
+      "severity": "critical",
+      "waiverId": null
     }
   ],
   "excludedProbeIds": [],
@@ -188,7 +191,7 @@
   },
   "revisionCount": 0,
   "runId": "spike-run-0001",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "scoredProbeId": "P-001",
   "scoringVersion": "sha256:07faa73cdc931e96c7255675ede1659722463837e2360009136ac0b88b2547bd",
   "scoringVersionInputs": {

@@ -22,6 +22,7 @@ import {
 	scoreProbeFixture,
 	sealedRunRecordFixtureForScore,
 } from '../../application/fixtures/score-fixtures.ts'
+import { fixedClock } from '../../fixtures/fixed-clock.ts'
 import { cleanControlProbe } from '../../schemas/fixtures/artifact-fixtures.ts'
 import {
 	defectFinding,
@@ -76,6 +77,7 @@ export async function scoreDefectProbe(
 				bytes: isolationManifestBytes,
 			}),
 		},
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 	})
 	if (result.artifact === null) {
@@ -122,6 +124,7 @@ export async function scoreCleanControl(
 				bytes: isolationManifestBytes,
 			}),
 		},
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 	})
 	if (result.artifact === null) {

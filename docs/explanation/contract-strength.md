@@ -9,7 +9,7 @@ sidebar:
 
 `score` answers two distinct questions at once, and the second is the one people misread.
 
-The **verdict** evaluates the operational outcome of an evaluation run. In `production` mode, the subject of the verdict is the **system under test** (combining the evaluator's recommendation with evidence-integrity checks to determine shippability). In `contract-scoring` mode, the subject is the **contract itself**—determining whether the run was sound, complete, and free from evidence faults or critical coverage gaps. A `PASS` verdict does not require zero coverage gaps: under AD-21, coverage gaps below the scoring policy's `severityFloor` are recorded in the artifact and do not move the verdict.
+The **verdict** evaluates the operational outcome of an evaluation run. In `production` mode, the subject of the verdict is the **system under test** (combining the evaluator's recommendation with evidence-integrity checks to determine shippability). In `contract-scoring` mode, the subject is the **contract itself**—determining whether the run was sound, complete, and free from evidence faults or critical coverage gaps. A `PASS` verdict does not require zero coverage gaps: under AD-21, coverage gaps below the scoring policy's `severityFloor`, and gaps an unexpired contract waiver covers, are recorded in the artifact and do not move the verdict.
 
 The **strength vector** answers how effectively the Behavioral Evaluation Contract discriminates between correct behavior and defects.
 
@@ -92,7 +92,7 @@ The defect rate tells you whether the contract caught what was planted. The verd
 Consider three common scenarios:
 
 1. **Catch rate 1.0, verdict `FAIL`:** The contract detected the seeded defect (`caught`). However, another required oracle in the contract examined insufficient evidence and abstained at or above the policy's `severityFloor`, or evidence was incomplete. Catching a defect does not excuse a broken measurement elsewhere in the run.
-2. **Catch rate 1.0, verdict `CONCERNS`:** The contract caught the defect, but the run completed fewer trials than the policy's `minimumTrialCount`, an oracle resolved `unreached`, or an unsatisfied coverage gap exists at or above the policy's `severityFloor`. (Unsatisfied coverage gaps below the severity floor are recorded in `coverageGaps` on the artifact, but do not move the verdict.) The vector is reported, but the verdict warns that the measurement was thinner than declared policy.
+2. **Catch rate 1.0, verdict `CONCERNS`:** The contract caught the defect, but the run completed fewer trials than the policy's `minimumTrialCount`, an oracle resolved `unreached`, or an unsatisfied, unwaived coverage gap exists at or above the policy's `severityFloor`. (Unsatisfied coverage gaps below the severity floor, or covered by an unexpired waiver, are recorded in `coverageGaps` on the artifact, but do not move the verdict.) The vector is reported, but the verdict warns that the measurement was thinner than declared policy.
 3. **Excluded clean control, verdict `PASS`:** In a clean-control run where no defect was seeded, all oracles held, resolving `passed-clean-control`. Because canary probes and clean controls are excluded before `buildStrengthVector` runs (AD-7), vector classes with no eligible probes remain `null` entirely. If no other verdict-ladder condition fires and policy requirements are satisfied, the clean-control run can PASS while contributing no strength measurement.
 
 ## Plan a trial set and trial reduction

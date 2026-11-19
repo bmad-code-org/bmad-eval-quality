@@ -8,6 +8,7 @@ import {
 	Identifier,
 	OracleId,
 	ProbeId,
+	WaiverId,
 } from './primitives.ts'
 import {
 	OracleDispositionValue,
@@ -266,6 +267,9 @@ export const CoverageGap = z.strictObject({
 	satisfactionPredicate: z.string().min(1),
 	satisfied: z.boolean(),
 	severity: Severity,
+	waiverId: WaiverId.nullable().describe(
+		"The contract waiver honoured over this gap, or `null` when none applies. A waiver applies when its `rule` names this gap's `rule` and its `expiresAt` falls after the scoring instant; an expired waiver reinstates its gap (AD-21). A waived gap stays in this list, so the record still shows the rule went unsatisfied, but it leaves AD-21's coverage-gap CONCERNS row. Required, not optional, which makes this the `schemaVersion` 4 -> 5 BREAKING bump under AD-11.",
+	),
 })
 
 /** the record as a type, so `core/coverage/` names it without importing Zod. */
@@ -442,12 +446,15 @@ const evidenceCommonFields = {
  * written. It was a literal inside `emit`'s own assembly, so the value a
  * consumer needed sat in a stage rather than beside the shape it names.
  *
- * `4` on three recorded bumps: `mode` made it 2, `uncitedFindingGaps` made
- * it 3, and the required per-trial and reduced per-probe outcome split made
- * it 4. Version 3 outcomes carried no trial identity and exposed several
- * entries for one probe to a comparator that needs one reduced result.
+ * `5` on four recorded bumps: `mode` made it 2, `uncitedFindingGaps` made
+ * it 3, the required per-trial and reduced per-probe outcome split made
+ * it 4, and the required `CoverageGap.waiverId` made it 5. Version 3
+ * outcomes carried no trial identity and exposed several entries for one
+ * probe to a comparator that needs one reduced result. Version 4 gaps could
+ * not say a contract waiver covered them, so a waived rule still held the
+ * verdict at CONCERNS.
  */
-export const EVIDENCE_ARTIFACT_SCHEMA_VERSION = 4
+export const EVIDENCE_ARTIFACT_SCHEMA_VERSION = 5
 
 /**
  * A discriminated union, because AD-21 requires that no shape hold a
