@@ -507,7 +507,7 @@ describe('the published package surface', () => {
 		// and held the same way: the runtime value off the built barrel, and the
 		// literal declared type off `dist/index.d.ts`.
 		expect(barrel.SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION).toBe(2)
-		expect(barrel.EVIDENCE_ARTIFACT_SCHEMA_VERSION).toBe(4)
+		expect(barrel.EVIDENCE_ARTIFACT_SCHEMA_VERSION).toBe(5)
 		expect(barrel.PREFLIGHT_VERDICT_SCHEMA_VERSION).toBe(2)
 		expect(barrel.SEALED_RUN_RECORD_SCHEMA_VERSION).toBe(8)
 		expect(barrel.ISOLATION_MANIFEST_SCHEMA_VERSION).toBe(1)
@@ -517,7 +517,7 @@ describe('the published package surface', () => {
 		expect(barrel.STRENGTH_AGGREGATE_SCHEMA_VERSION).toBe(1)
 
 		const brief: typeof import('eval-quality').SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION = 2
-		const evidence: typeof import('eval-quality').EVIDENCE_ARTIFACT_SCHEMA_VERSION = 4
+		const evidence: typeof import('eval-quality').EVIDENCE_ARTIFACT_SCHEMA_VERSION = 5
 		const verdict: typeof import('eval-quality').PREFLIGHT_VERDICT_SCHEMA_VERSION = 2
 		const record: typeof import('eval-quality').SEALED_RUN_RECORD_SCHEMA_VERSION = 8
 		const manifest: typeof import('eval-quality').ISOLATION_MANIFEST_SCHEMA_VERSION = 1
@@ -525,7 +525,7 @@ describe('the published package surface', () => {
 		const policy: typeof import('eval-quality').SCORING_POLICY_SCHEMA_VERSION = 2
 		const privateManifest: typeof import('eval-quality').PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION = 1
 		const briefLiteral: 2 = brief
-		const evidenceLiteral: 4 = evidence
+		const evidenceLiteral: 5 = evidence
 		const verdictLiteral: 2 = verdict
 		const recordLiteral: 8 = record
 		const manifestLiteral: 1 = manifest

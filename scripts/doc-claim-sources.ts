@@ -295,7 +295,7 @@ export const portsTableIsCurrent = (): boolean => {
 	return (
 		imports('EnvironmentProbePort', 'environment-probe-port') &&
 		imports('CorpusPort', 'corpus-port') &&
-		!imports('ClockPort', 'clock-port') &&
+		imports('ClockPort', 'clock-port') &&
 		!imports('FileSystemPort', 'file-system-port')
 	)
 }

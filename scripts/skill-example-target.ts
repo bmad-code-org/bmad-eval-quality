@@ -69,6 +69,9 @@ import {
 	renderJson,
 } from './worked-example-shared.ts'
 
+/** The scoring instant `score()` tests contract-waiver expiry against. */
+const EXAMPLE_SCORED_AT = '2026-01-01T00:00:00Z'
+
 /** Repository-relative, for the emitted keys and for violation messages. */
 export const SKILL_EXAMPLE_LABEL = '_bmad-output/worked-examples/skill-defect'
 
@@ -721,6 +724,9 @@ export function buildSkillExampleChain(): SkillExampleChain {
 		// gap `runScore` closes identically.
 		'none',
 		false,
+		// The example contract declares no waiver, so no expiry is ever
+		// tested against this instant; a fixed one keeps the target reproducible.
+		EXAMPLE_SCORED_AT,
 	)
 	if (scoredOutcomesAndVerdict.ladder.verdict === null) {
 		fail(

@@ -12,6 +12,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { createLocalCorpusAdapter } from '../adapters/local-corpus-adapter.ts'
+import { createSystemClockAdapter } from '../adapters/system-clock-adapter.ts'
 import { parseArguments } from './arguments.ts'
 import type { CommandOutcome } from './exit-codes.ts'
 import { exitCodeFor } from './exit-codes.ts'
@@ -98,6 +99,9 @@ function environmentOf(version: string): RunEnvironment {
 		// known only once `--corpus-root` is parsed, which is why this is a
 		// factory rather than a constructed port.
 		corpusPort: (root) => createLocalCorpusAdapter({ root }),
+		// `score`'s scoring instant for contract-waiver expiry: the reference
+		// adapter over the system clock.
+		clock: createSystemClockAdapter(),
 		// One controller per process invocation, never aborted here: no flag
 		// this binary parses requests cancellation, so the signal only ever
 		// answers "was this already aborted before the call" as false.

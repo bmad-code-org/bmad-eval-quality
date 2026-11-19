@@ -80,9 +80,9 @@ Every term here names something the `score` command and its library entry, `runS
 | **Evidence condition** | A firing condition saying the measurement was thinner than the policy asked for. Falling short of the minimum trial count and an oracle resolving `unreached` are the two. `--strict` never promotes a CONCERNS whose conditions are all of this kind. |
 | **Scoring version** | The full experiment identity of a scored result: the digest of six inputs, the contract schema version, the corpus digest, the fixture digest, the evaluator configuration digest, the scoring policy digest, and the run mode. Callers compare scoring versions to ensure experimental controls held constant across runs. |
 | **Caller-attested** | A scoring-version input no artifact in the pipeline carries, so the caller supplies it and the artifact records it as such. `--corpus-digest` is the one on the command line. |
-| **Coverage gap** | A discipline rule that is relevant to a contract and not satisfied by it. Recorded, and below the severity floor it does not move the verdict. The fourteen predicates that decide relevance and satisfaction are published at the AD-31 coverage predicate table at `/ad31-coverage-predicatesgenerated/`. |
+| **Coverage gap** | A discipline rule that is relevant to a contract and not satisfied by it. Recorded, and below the severity floor or under an unexpired waiver it does not move the verdict. The fourteen predicates that decide relevance and satisfaction are published at the AD-31 coverage predicate table at `/ad31-coverage-predicatesgenerated/`. |
 | **Probe class** | What a probe is for: `defect`, `gameability`, `zero-action`, or `canary`. Canary probes and clean controls never enter the strength vector. |
-| **Waiver** | A recorded, conditional exemption from a discipline rule, carrying the rule name, a rationale, a machine-checkable condition, and an approval. An expired waiver reinstates its gap. |
+| **Waiver** | A recorded, conditional exemption from a discipline rule, carrying the rule name, a rationale, a machine-checkable condition, an approval, and an expiry. An unexpired waiver takes the matching coverage gap out of the verdict; the gap stays in the evidence with the waiver's id in `waiverId`. An expired waiver reinstates its gap. The condition is recorded and not evaluated. |
 
 ## Preflight check kinds
 

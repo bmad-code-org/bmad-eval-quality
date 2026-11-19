@@ -13,14 +13,16 @@
       "rule": "malformed-input",
       "satisfactionPredicate": "malformed-input-satisfaction",
       "satisfied": false,
-      "severity": "material"
+      "severity": "material",
+      "waiverId": null
     },
     {
       "relevancePredicate": "sibling-cross-check-relevance",
       "rule": "sibling-cross-check",
       "satisfactionPredicate": "sibling-cross-check-satisfaction",
       "satisfied": false,
-      "severity": "material"
+      "severity": "material",
+      "waiverId": null
     }
   ],
   "excludedProbeIds": [],
@@ -123,7 +125,7 @@
   },
   "revisionCount": 0,
   "runId": "skill-defect-run-0001",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "scoredProbeId": "P-001",
   "scoringVersion": "sha256:7d6b1644d9428dadabe24d7ad83daa5f80ed69e5e2bed28f955d6f5434712667",
   "scoringVersionInputs": {

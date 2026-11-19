@@ -58,6 +58,7 @@ import type { EvaluatorRecommendation } from '../schemas/verdict.ts'
 import { buildPlanIndex } from '../seal/plan-index.ts'
 import type { ScoreStage } from '../stage-contracts.ts'
 import { resolveCapturedBindings, selectWithBindings } from './bindings.ts'
+import { applyCoverageWaivers } from './coverage-waivers.ts'
 import type {
 	ContractAssessment,
 	EvidenceIntegrityInputs,
@@ -405,7 +406,9 @@ function resolveDesignatedOracleId(
  * The stage. Signature order matches `ScoreStage`'s own: the five declared
  * artifact inputs, then `waiver` and `evaluationFault`, the two documented
  * caller-supplied parameters -- neither has a source among those five, and
- * each arrives named and explicit rather than a hardcoded literal -- then the
+ * each arrives named and explicit rather than a hardcoded literal -- then
+ * `scoredAt`, the RFC 3339 instant a contract waiver's expiry is tested
+ * against (AD-1 keeps the clock read outside `core/`), then the
  * optional `designatedOracleId`, which replaces the derived pairing when the
  * caller knows which oracle belongs to the probe.
  */
@@ -420,6 +423,7 @@ export const score: ScoreStage<
 	policy,
 	waiver,
 	evaluationFault,
+	scoredAt,
 	designatedOracleIdOverride,
 ) => {
 	// Probe sealing: once per run, never per trial, since qualification reads
@@ -782,7 +786,11 @@ export const score: ScoreStage<
 	const uncitedFindings = trials.flatMap((trial) =>
 		uncitedFindingIds(recordPickOf(trial)),
 	)
-	const coverageGaps = evaluateCoverage(contract)
+	const coverageGaps = applyCoverageWaivers(
+		evaluateCoverage(contract),
+		contract.waivers,
+		scoredAt,
+	)
 
 	const trialSetDisagreements = trialSetDisagreementsOf(contract, trials)
 

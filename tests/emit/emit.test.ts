@@ -372,6 +372,7 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 			satisfactionPredicate: 'satisfied',
 			satisfied: false,
 			severity: 'material',
+			waiverId: null,
 		}
 		const result = emitOf({
 			uncitedFindings: ['F-777'],
@@ -534,7 +535,7 @@ describe('emit: production-mode and contract-scoring-mode shape', () => {
 		const scored = scoredOf({ assessment: productionAssessment() })
 		const result = emit(scored, digestOf(200), digestOf(201), digestOf(202))
 		const parsed = EvidenceArtifact.parse(result)
-		expect(parsed.schemaVersion).toBe(4)
+		expect(parsed.schemaVersion).toBe(5)
 		expect(parsed.parentDigest).toBeNull()
 		expect(parsed.revisionCount).toBe(0)
 		expect(parsed.runId).toBe(scored.runId)

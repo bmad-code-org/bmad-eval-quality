@@ -514,6 +514,7 @@ export const workedExampleEvidenceArtifact: unknown = {
 				'an oracle whose intent and check address both members of a declared parameter group',
 			satisfied: false,
 			severity: 'material',
+			waiverId: null,
 		},
 	],
 	strength: {

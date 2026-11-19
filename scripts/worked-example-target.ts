@@ -62,6 +62,9 @@ import {
 } from './worked-example-shared.ts'
 import { buildWorkflowExample } from './workflow-example-target.ts'
 
+/** The scoring instant `score()` tests contract-waiver expiry against. */
+const EXAMPLE_SCORED_AT = '2026-01-01T00:00:00Z'
+
 /** Repository-relative, for the emitted keys and for violation messages. */
 export const WORKED_EXAMPLE_LABEL =
 	'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example'
@@ -1253,6 +1256,9 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		// (Decision 6), the same gap `runScore` closes identically.
 		'none',
 		false,
+		// The example contract declares no waiver, so no expiry is ever
+		// tested against this instant; a fixed one keeps the target reproducible.
+		EXAMPLE_SCORED_AT,
 	)
 	if (scoredOutcomesAndVerdict.ladder.verdict === null) {
 		fail(

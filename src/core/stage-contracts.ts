@@ -102,6 +102,8 @@ export type ScoreStage<Trials, Product> = (
 	policy: ScoringPolicy,
 	waiver: WaiverStateValue,
 	evaluationFault: boolean,
+	/** The RFC 3339 scoring instant a contract waiver's `expiresAt` is tested against. `core/` reads no clock (AD-1), so the caller reads one. */
+	scoredAt: string,
 	/** Present, it replaces the pairing derived from the probe's behavior; absent, a behavior listing exactly one oracle designates it and any other count designates none. */
 	designatedOracleId?: string,
 ) => Product

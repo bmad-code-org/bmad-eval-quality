@@ -288,6 +288,12 @@ A contract carries all twenty-one, supplying `null` or an empty collection where
 | Additional assessment mechanisms | `rubrics`, `waivers` | Qualitative judge rubrics and documented failure exemptions. |
 
 In this contract, `rubrics: []` declares that no LLM judge evaluates qualitative rubrics.
+`waivers: []` declares that no discipline rule is waived.
+A waiver names one of the seven discipline rules in `rule`, with a `rationale`, an `approval`, and an RFC 3339 `expiresAt`.
+At score time, a waiver whose `rule` matches an unsatisfied coverage gap, and whose `expiresAt` falls after the scoring instant, takes that gap out of the verdict.
+The gap stays in `coverageGaps` with the waiver's id in `waiverId`, so the evidence still shows the rule went unsatisfied.
+An expired waiver reinstates its gap.
+The `condition` field is recorded and not evaluated, because the contract format defines no condition language yet.
 `fixtureReset: null` indicates that the contract defines no explicit reset operation.
 Declared limits, safety limits, and setup instructions inform the caller.
 The evaluator library does not launch sandboxes or execute external cleanup commands on its own.

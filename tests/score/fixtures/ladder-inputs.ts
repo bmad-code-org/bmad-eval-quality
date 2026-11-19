@@ -493,6 +493,7 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 					satisfactionPredicate: 'sibling-cross-check-satisfaction',
 					satisfied: false,
 					severity: 'material',
+					waiverId: null,
 				},
 			],
 		}),

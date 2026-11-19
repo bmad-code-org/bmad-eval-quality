@@ -7,6 +7,7 @@
  * normaliser: `src/cli/run.ts` may not import `node:path`, and a test that
  * imported it would resolve against this process's working directory.
  */
+
 import { describe, expect, it, vi } from 'vitest'
 import {
 	compile,
@@ -65,6 +66,7 @@ import {
 	unqualifiedProbeFixture,
 } from '../application/fixtures/score-fixtures.ts'
 import { repeatedIdentifierSharedOperation } from '../fixtures/duplicate-interface-identifier.ts'
+import { fixedClock } from '../fixtures/fixed-clock.ts'
 import {
 	jsonBody,
 	observationsFor,
@@ -164,6 +166,7 @@ const environmentOf = (
 				},
 			}
 		},
+		clock: fixedClock(),
 		signal: new AbortController().signal,
 		version: '0.0.0-test',
 	}

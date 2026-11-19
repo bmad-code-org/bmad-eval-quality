@@ -52,6 +52,9 @@ export function evaluateCoverage(
 			satisfactionPredicate: satisfied.predicate,
 			satisfied: false,
 			severity,
+			// Compile has no scoring instant to test a waiver's expiry against;
+			// `core/score/coverage-waivers.ts` sets this at score time.
+			waiverId: null,
 		})
 	}
 	return gaps

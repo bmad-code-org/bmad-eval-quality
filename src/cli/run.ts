@@ -53,6 +53,8 @@ export type RunEnvironment = {
 	 * the port's own type is read off `RunScoreOptions` instead.
 	 */
 	readonly corpusPort: (root: string) => NonNullable<RunScoreOptions['port']>
+	/** The scoring instant a contract waiver's expiry is tested against. */
+	readonly clock: RunScoreOptions['clock']
 	/** One per process invocation, the same shape `RunPreflightOptions.signal` already declares. */
 	readonly signal: AbortSignal
 	readonly version: string
@@ -658,6 +660,7 @@ async function runScoreCommand(
 			? {}
 			: { designatedOracleId: designatedOracle }),
 		port: corpusRoot === null ? undefined : environment.corpusPort(corpusRoot),
+		clock: environment.clock,
 		signal: environment.signal,
 	})
 
