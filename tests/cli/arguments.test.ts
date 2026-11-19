@@ -5,6 +5,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { displayToken } from '../../src/application/display-token.ts'
 import type { ParsedInvocation } from '../../src/cli/arguments.ts'
 import { COMMANDS, parseArguments } from '../../src/cli/arguments.ts'
 
@@ -60,6 +61,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			corpusDigest: null,
 			designatedOracle: null,
 			corpusRoot: null,
+			scoredAt: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -85,6 +87,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			corpusDigest: null,
 			designatedOracle: null,
 			corpusRoot: null,
+			scoredAt: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -112,6 +115,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			corpusDigest: null,
 			designatedOracle: null,
 			corpusRoot: null,
+			scoredAt: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -289,6 +293,89 @@ describe('cli arguments: the six usage-error shapes (cases 18-23)', () => {
 	})
 })
 
+describe('cli arguments: a typed token stays on one diagnostic line', () => {
+	it('displayToken escapes C0 and C1 controls and DEL, and leaves everything else as typed', () => {
+		expect(displayToken('a\nb\rc\td')).toBe('a\\nb\\rc\\td')
+		expect(displayToken('\u0000\u001b[31m\u007f\u009b')).toBe(
+			'\\u0000\\u001b[31m\\u007f\\u009b',
+		)
+		expect(displayToken('C:\\runs\\"quoted" é 日本 🙂')).toBe(
+			'C:\\runs\\"quoted" é 日本 🙂',
+		)
+		expect(displayToken('')).toBe('')
+	})
+
+	const SCORE_ARGV = [
+		'score',
+		'--record',
+		'record.json',
+		'--contract',
+		'contract.json',
+		'--probe',
+		'probe.json',
+		'--preflight-verdict',
+		'preflight-verdict.json',
+		'--policy',
+		'policy.json',
+		'--corpus-digest',
+		'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+	]
+
+	it.each([
+		[
+			'an unknown command',
+			['comp\nile'],
+			'unknown command "comp\\nile"; expected one of compile, seal, preflight, score, aggregate-strength',
+		],
+		[
+			'an unknown help target',
+			['help', 'x\r'],
+			'unknown command "x\\r"; expected one of compile, seal, preflight, score, aggregate-strength',
+		],
+		[
+			'a flag-shaped next token',
+			['compile', '--in', '-invalid\n'],
+			'--in requires a value, but the next token is "-invalid\\n"; use --in=-invalid\\n for a value that begins with "-"',
+		],
+		[
+			'a positional after --',
+			['compile', '--', 'x\n'],
+			'compile takes no positional argument, but got "x\\n"',
+		],
+		[
+			'two different values',
+			[
+				...SCORE_ARGV,
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
+				'--scored-at',
+				'2026-11-19T12:00:01Z\n',
+			],
+			'--scored-at given twice with different values, "2026-11-19T12:00:00Z" and "2026-11-19T12:00:01Z\\n"',
+		],
+		[
+			'an unknown flag in the equals form',
+			['compile', '--x\u001b=1'],
+			'unknown flag "--x\\u001b" in "--x\\u001b=1"',
+		],
+		[
+			'an unknown flag',
+			['compile', '--x\n'],
+			'unknown flag "--x\\n" for compile',
+		],
+		[
+			'a refused --scored-at',
+			[...SCORE_ARGV, '--scored-at', 'now\n'],
+			'--scored-at "now\\n" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z',
+		],
+	] as const)('%s', (_label, argv, message) => {
+		const parsed = parseUsageError(argv)
+		expect(parsed.message).toBe(message)
+		// Nothing left for `displayToken` to escape: the message holds no control character.
+		expect(displayToken(parsed.message)).toBe(parsed.message)
+	})
+})
+
 describe('cli arguments: source scans (cases 24-25)', () => {
 	const source = readFileSync(
 		new URL('../../src/cli/arguments.ts', import.meta.url),
@@ -392,6 +479,8 @@ describe('cli arguments: score (Story 8.4)', () => {
 				'/corpus',
 				'--designated-oracle',
 				'O-002',
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
 				'--out',
 				'artifacts/',
 				'--strict',
@@ -415,6 +504,7 @@ describe('cli arguments: score (Story 8.4)', () => {
 				'sha256:0000000000000000000000000000000000000000000000000000000000000001',
 			designatedOracle: 'O-002',
 			corpusRoot: '/corpus',
+			scoredAt: '2026-11-19T12:00:00Z',
 			strictInputs: true,
 			strict: true,
 		})
@@ -469,6 +559,109 @@ describe('cli arguments: score (Story 8.4)', () => {
 			expect(
 				parseUsageError([command, '--designated-oracle', 'O-001']).message,
 			).toContain('--designated-oracle')
+		}
+	})
+
+	it('--scored-at is optional and reads null when absent', () => {
+		expect(parseRun(['score', ...SCORE_REQUIRED]).scoredAt).toBeNull()
+	})
+
+	it('--scored-at takes the space and the equals forms', () => {
+		expect(
+			parseRun(['score', ...SCORE_REQUIRED, '--scored-at', '2026-11-19T12:00Z'])
+				.scoredAt,
+		).toBe('2026-11-19T12:00Z')
+		expect(
+			parseRun([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at=2026-11-19T12:00:00.250Z',
+			]).scoredAt,
+		).toBe('2026-11-19T12:00:00.250Z')
+	})
+
+	it('--scored-at refuses a value Rfc3339Utc refuses, naming the flag and the value', () => {
+		for (const value of [
+			'2026-11-19T12:00:00+00:00',
+			'2026-11-19T12:00:00',
+			'2026-11-19',
+			'2026-02-30T00:00:00Z',
+			'2026-11-19 12:00:00Z',
+			'now',
+		]) {
+			expect(
+				parseUsageError(['score', ...SCORE_REQUIRED, `--scored-at=${value}`])
+					.message,
+			).toBe(
+				`--scored-at "${value}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
+			)
+		}
+	})
+
+	it('--scored-at quotes a refused value as JSON, so a control character stays on the one diagnostic line', () => {
+		expect(
+			parseUsageError([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at',
+				'2026-11-19T12:00:00Z\n',
+			]).message,
+		).toBe(
+			'--scored-at "2026-11-19T12:00:00Z\\n" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z',
+		)
+	})
+
+	it('--scored-at without a value names the flag', () => {
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--scored-at']).message,
+		).toBe('--scored-at requires a value')
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--scored-at=']).message,
+		).toBe('--scored-at was given an empty value')
+	})
+
+	it('--scored-at accepts an identical repeat and refuses two different instants', () => {
+		expect(
+			parseRun([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
+				'--scored-at=2026-11-19T12:00:00Z',
+			]).scoredAt,
+		).toBe('2026-11-19T12:00:00Z')
+		expect(
+			parseUsageError([
+				'score',
+				...SCORE_REQUIRED,
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
+				'--scored-at',
+				'2026-11-20T12:00:00Z',
+			]).message,
+		).toBe(
+			'--scored-at given twice with different values, "2026-11-19T12:00:00Z" and "2026-11-20T12:00:00Z"',
+		)
+	})
+
+	it('a missing required flag is reported before a malformed --scored-at', () => {
+		expect(
+			parseUsageError(['score', '--record', 'record.json', '--scored-at=now'])
+				.message,
+		).toContain('score requires')
+	})
+
+	it('no other command takes --scored-at', () => {
+		for (const command of [
+			'compile',
+			'seal',
+			'preflight',
+			'aggregate-strength',
+		]) {
+			expect(
+				parseUsageError([command, '--scored-at', '2026-11-19T12:00:00Z'])
+					.message,
+			).toBe(`unknown flag "--scored-at" for ${command}`)
 		}
 	})
 

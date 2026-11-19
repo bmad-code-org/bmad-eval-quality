@@ -11,13 +11,9 @@ import {
 	DesignatedOracleRefusal,
 	runScore,
 } from '../../src/application/score.ts'
-import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
-import {
-	EVAL_CONTRACT_SCHEMA_VERSION,
-	type EvalContract,
-} from '../../src/core/schemas/eval-contract.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
 import {
 	EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
 	EvaluatorConfiguration,
@@ -60,6 +56,7 @@ import {
 	isolationManifestBytes,
 	isolationManifestBytesDigest,
 	isolationManifestFixtureForScore,
+	loweredFloorPolicyForScore,
 	passingPreflightVerdictForScore,
 	privateArtifactManifestFixtureForScore,
 	privateEntryBytes,
@@ -71,6 +68,8 @@ import {
 	twoOracleScoreContractFixture,
 	twoOracleSealedRunRecordFixtureForScore,
 	unqualifiedProbeFixture,
+	waivedScoreFixtures,
+	waiversNaming,
 } from './fixtures/score-fixtures.ts'
 
 /** A hand-written fake, never the real adapter (AD-30). */
@@ -539,25 +538,13 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 })
 
 describe('runScore: contract waivers over coverage gaps', () => {
-	const loweredFloor = {
-		...scoringPolicyFixtureForScore,
-		severityFloor: 'low',
-	} as const
+	const loweredFloor = loweredFloorPolicyForScore
 	const clockAt = (now: string): ClockPort => ({
 		read: vi.fn(async () => ({ now })),
 	})
 	const SCORED_AT = '2026-11-19T12:00:00Z'
-
-	/** The record and manifest restate the contract digest, so a waived contract needs both re-pointed. */
-	const withWaivers = (waivers: EvalContract['waivers']) => {
-		const contract: EvalContract = { ...scoreContractFixture, waivers }
-		const contractDigest = digestArtifact(contract, 'EvalContract')
-		return {
-			contract,
-			record: { ...sealedRunRecordFixtureForScore, contractDigest },
-			manifest: { ...isolationManifestFixtureForScore, contractDigest },
-		}
-	}
+	const withWaivers = waivedScoreFixtures
+	const waiversFor = waiversNaming
 
 	const gapRulesOf = async (): Promise<readonly string[]> => {
 		const baseline = await run({
@@ -568,16 +555,6 @@ describe('runScore: contract waivers over coverage gaps', () => {
 		expect(rules.length).toBeGreaterThan(0)
 		return rules
 	}
-
-	const waiversFor = (rules: readonly string[], expiresAt: string) =>
-		rules.map((rule, index) => ({
-			id: `W-${String(index + 1).padStart(3, '0')}`,
-			rule,
-			rationale: 'the operation has no surface this rule can exercise',
-			condition: null,
-			approval: 'test approver, 2026-11-18',
-			expiresAt,
-		}))
 
 	it('an unexpired waiver naming every unsatisfied gap rule resolves PASS and keeps each gap visible as waived', async () => {
 		const rules = await gapRulesOf()
@@ -1203,6 +1180,29 @@ describe('runScore: a caller-named designated oracle', () => {
 			} finally {
 				vi.restoreAllMocks()
 			}
+		},
+	)
+
+	it('a malformed identifier reaches the refusal message on one line, its control characters escaped and its backslashes as typed', async () => {
+		const refusal: unknown = await twoOracle({
+			designatedOracleId: 'O\\bad\nO-002\u001b',
+		}).catch((error: unknown) => error)
+		expect(refusal).toBeInstanceOf(DesignatedOracleRefusal)
+		expect((refusal as Error).message).toBe(
+			'--designated-oracle "O\\bad\\nO-002\\u001b" is not an oracle identifier; expected O- followed by at least three digits',
+		)
+	})
+
+	it.each([null, 123, {}] as const)(
+		'refuses a non-string identifier %s from an untyped caller as a DesignatedOracleRefusal',
+		async (value) => {
+			const refusal: unknown = await twoOracle({
+				designatedOracleId: value as unknown as string,
+			}).catch((error: unknown) => error)
+			expect(refusal).toBeInstanceOf(DesignatedOracleRefusal)
+			expect((refusal as Error).message).toContain(
+				`--designated-oracle "${String(value)}" is not an oracle identifier`,
+			)
 		},
 	)
 

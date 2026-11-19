@@ -76,6 +76,37 @@ describe('applyCoverageWaivers', () => {
 		expect(gaps[0]?.waiverId).toBeNull()
 	})
 
+	it.each([
+		['one microsecond after', '2026-11-19T12:00:00.000002Z', 'W-001'],
+		['one microsecond before', '2026-11-19T12:00:00.000000Z', null],
+		['at, spelled with more digits', '2026-11-19T12:00:00.0000010Z', null],
+	] as const)(
+		'compares past the millisecond: a waiver expiring %s a sub-millisecond instant',
+		(_label, expiresAt, waiverId) => {
+			const gaps = applyCoverageWaivers(
+				[gap('malformed-input')],
+				[waiver({ expiresAt })],
+				'2026-11-19T12:00:00.000001Z',
+			)
+			expect(gaps[0]?.waiverId).toBe(waiverId)
+		},
+	)
+
+	it('compares a fractional instant with whole seconds and minutes either way round', () => {
+		const at = (expiresAt: string, scoredAt: string) =>
+			applyCoverageWaivers(
+				[gap('malformed-input')],
+				[waiver({ expiresAt })],
+				scoredAt,
+			)[0]?.waiverId
+		expect(at('2026-11-19T12:00:00.5Z', '2026-11-19T12:00:00Z')).toBe('W-001')
+		expect(at('2026-11-19T12:00:00Z', '2026-11-19T11:59:59.999999Z')).toBe(
+			'W-001',
+		)
+		expect(at('2026-11-19T12:00Z', '2026-11-19T12:00:00.000001Z')).toBeNull()
+		expect(at('2026-11-19T12:01Z', '2026-11-19T12:00:59.9Z')).toBe('W-001')
+	})
+
 	it('the first unexpired waiver in contract order wins when several name one rule', () => {
 		const gaps = applyCoverageWaivers(
 			[gap('malformed-input')],

@@ -45,11 +45,14 @@ import {
 	evaluatorConfigurationFixture,
 	isolationManifestBytes,
 	isolationManifestFixtureForScore,
+	loweredFloorPolicyForScore,
 	passingPreflightVerdictForScore,
 	scoreContractFixture,
 	scoreProbeFixture,
 	scoringPolicyFixtureForScore,
 	sealedRunRecordFixtureForScore,
+	waivedScoreFixtures,
+	waiversNaming,
 } from '../application/fixtures/score-fixtures.ts'
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url))
@@ -368,6 +371,26 @@ describe('main.ts at the process boundary', () => {
 				expect(result.stderr).toContain('ENOENT')
 				// The stack the fix replaced. Its absence is the assertion.
 				expect(result.stderr).not.toContain('node:internal')
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+
+		it('a missing --in path carrying a newline stays on the one usage line', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-path-'))
+			try {
+				const missing = join(scratch, 'absent\nname.json')
+				const result = spawnSync(
+					process.execPath,
+					[BUILT_MAIN, 'compile', '--in', missing],
+					{ encoding: 'utf8' },
+				)
+
+				expect(result.status).toBe(EXIT_USAGE)
+				expect(result.stderr).toBe(
+					`eval-quality: usage: open "${join(scratch, 'absent\\nname.json')}": ENOENT\n`,
+				)
 			} finally {
 				rmSync(scratch, { recursive: true, force: true })
 			}
@@ -807,6 +830,170 @@ describe('main.ts at the process boundary', () => {
 			} finally {
 				rmSync(scratch, { recursive: true, force: true })
 			}
+		}, 60_000)
+	})
+
+	describe('score --scored-at through the built binary', () => {
+		const EXPIRES_AT = '2026-11-19T12:00:00Z'
+
+		type Gap = { readonly rule: string; readonly waiverId: string | null }
+		type Artifact = {
+			readonly productionVerdict: string
+			readonly coverageGaps: readonly Gap[]
+		}
+
+		/**
+		 * Writes the fixture chain at a lowered floor, so its coverage gaps reach
+		 * the verdict, with `waivers` on the contract, and returns the argv that
+		 * scores it.
+		 */
+		const writeChain = (
+			scratch: string,
+			waivers: Parameters<typeof waivedScoreFixtures>[0],
+		): string[] => {
+			const { contract, record, manifest } = waivedScoreFixtures(waivers)
+			const corpusRoot = join(scratch, 'corpus')
+			mkdirSync(corpusRoot, { recursive: true })
+			writeFileSync(
+				join(corpusRoot, 'opaque:isolation-manifest-1'),
+				isolationManifestBytes,
+			)
+			const files: Record<string, unknown> = {
+				'record.json': record,
+				'contract.json': contract,
+				'probe.json': scoreProbeFixture,
+				'preflight-verdict.json': passingPreflightVerdictForScore,
+				'policy.json': loweredFloorPolicyForScore,
+				'isolation-manifest.json': manifest,
+				'evaluator-configuration.json': evaluatorConfigurationFixture,
+			}
+			for (const [name, body] of Object.entries(files)) {
+				writeFileSync(join(scratch, name), JSON.stringify(body))
+			}
+			return [
+				BUILT_MAIN,
+				'score',
+				'--record',
+				join(scratch, 'record.json'),
+				'--contract',
+				join(scratch, 'contract.json'),
+				'--probe',
+				join(scratch, 'probe.json'),
+				'--preflight-verdict',
+				join(scratch, 'preflight-verdict.json'),
+				'--policy',
+				join(scratch, 'policy.json'),
+				'--isolation-manifest',
+				join(scratch, 'isolation-manifest.json'),
+				'--evaluator-configuration',
+				join(scratch, 'evaluator-configuration.json'),
+				'--corpus-digest',
+				corpusDigestFixture,
+				'--corpus-root',
+				corpusRoot,
+			]
+		}
+
+		/** One scratch directory per chain, removed whatever the case does. */
+		const scoreChain = (
+			waivers: Parameters<typeof waivedScoreFixtures>[0],
+			extra: readonly string[],
+		) => {
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-scored-at-'))
+			try {
+				const result = spawnSync(
+					process.execPath,
+					[...writeChain(scratch, waivers), ...extra],
+					{ encoding: 'utf8' },
+				)
+				return {
+					status: result.status,
+					stderr: result.stderr,
+					stdout: result.stdout,
+					artifact:
+						result.stdout === ''
+							? undefined
+							: (JSON.parse(result.stdout) as Artifact),
+				}
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}
+
+		/** The unwaived chain's gap rules, read off the binary's own artifact. */
+		const gapRules = (): readonly string[] => {
+			const { artifact, status, stderr } = scoreChain([], [])
+			expect(stderr).toBe('')
+			expect(status).toBe(EXIT_OK)
+			const rules = artifact?.coverageGaps.map((gap) => gap.rule) ?? []
+			expect(rules.length).toBeGreaterThan(0)
+			return rules
+		}
+
+		it('a waiver applies at an instant before its expiry and not at one after it', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const rules = gapRules()
+			const waivers = waiversNaming(rules, EXPIRES_AT)
+
+			const before = scoreChain(waivers, [
+				'--scored-at',
+				'2026-11-19T11:59:59Z',
+			])
+			expect(before.stderr).toBe('')
+			expect(before.status).toBe(EXIT_OK)
+			expect(before.artifact?.productionVerdict).toBe('PASS')
+			expect(before.artifact?.coverageGaps).toEqual(
+				rules.map((rule, index) =>
+					expect.objectContaining({ rule, waiverId: waivers[index]?.id }),
+				),
+			)
+
+			const after = scoreChain(waivers, ['--scored-at=2026-11-19T12:00:01Z'])
+			expect(after.stderr).toBe('')
+			expect(after.status).toBe(EXIT_OK)
+			expect(after.artifact?.productionVerdict).toBe('CONCERNS')
+			expect(after.artifact?.coverageGaps.map((gap) => gap.waiverId)).toEqual(
+				rules.map(() => null),
+			)
+		}, 60_000)
+
+		it('two runs pinned to one instant write byte-identical artifacts that do not carry it', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const waivers = waiversNaming(gapRules(), EXPIRES_AT)
+			const instant = '2026-11-19T11:30:00Z'
+			const first = scoreChain(waivers, ['--scored-at', instant])
+			const second = scoreChain(waivers, ['--scored-at', instant])
+			expect(first.status).toBe(EXIT_OK)
+			expect(first.stdout).not.toBe('')
+			expect(first.stdout).toBe(second.stdout)
+			expect(first.stdout).not.toContain(instant)
+		}, 60_000)
+
+		it('absent, the system clock supplies the instant', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const rules = gapRules()
+			// Far enough either side of any real clock that the case cannot
+			// straddle an expiry while it runs.
+			const expired = scoreChain(
+				waiversNaming(rules, '2000-01-01T00:00:00Z'),
+				[],
+			)
+			const unexpired = scoreChain(
+				waiversNaming(rules, '2999-01-01T00:00:00Z'),
+				[],
+			)
+			expect(expired.artifact?.productionVerdict).toBe('CONCERNS')
+			expect(unexpired.artifact?.productionVerdict).toBe('PASS')
+		}, 60_000)
+
+		it('a malformed instant exits 64 with one usage line and no artifact', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const result = scoreChain([], ['--scored-at', '2026-11-19'])
+			expect(result.status).toBe(EXIT_USAGE)
+			expect(result.stdout).toBe('')
+			expect(result.stderr).toBe(
+				'eval-quality: usage: --scored-at "2026-11-19" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z\n',
+			)
 		}, 60_000)
 	})
 

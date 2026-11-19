@@ -161,6 +161,8 @@ npx eval-quality aggregate-strength --evidence evidence-p-001.json \
 
 Every command is non-interactive. Without `--out` the artifact goes to stdout, so a command composes with a pipe. An `--out` ending in `.json` is a file path; anything else is a directory, and the artifact lands at `<target>/<kind>.json`. Diagnostics and errors go to stderr, so stdout carries the artifact alone.
 
+`score` tests a contract waiver's `expiresAt` against the system clock. `--scored-at <timestamp>` pins that instant to an RFC 3339 UTC timestamp, so replaying an accepted baseline at the instant it was scored keeps its verdict and its bytes after a waiver expires. The instant is not recorded in the artifact.
+
 **Exit codes.**
 
 | Exit Code | Meaning |

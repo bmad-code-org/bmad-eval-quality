@@ -19,6 +19,7 @@ export {
 // adapter and `evaluateTarget` take. The Zod schemas stay unexported; these
 // three functions are the runtime surface.
 export { parseCommandTargetPolicy } from './command-target-policy.ts'
+export { createFixedClockAdapter } from './fixed-clock-adapter.ts'
 export type { CorpusMechanism } from './local-corpus-adapter.ts'
 export { createLocalCorpusAdapter } from './local-corpus-adapter.ts'
 export type {

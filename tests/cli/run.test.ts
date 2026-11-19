@@ -53,6 +53,7 @@ import {
 	evaluatorConfigurationFixture,
 	isolationManifestBytes,
 	isolationManifestFixtureForScore,
+	loweredFloorPolicyForScore,
 	passingPreflightVerdictForScore,
 	privateArtifactManifestFixtureForScore,
 	privateEntryBytes,
@@ -64,6 +65,8 @@ import {
 	twoOracleScoreContractFixture,
 	twoOracleSealedRunRecordFixtureForScore,
 	unqualifiedProbeFixture,
+	waivedScoreFixtures,
+	waiversNaming,
 } from '../application/fixtures/score-fixtures.ts'
 import { repeatedIdentifierSharedOperation } from '../fixtures/duplicate-interface-identifier.ts'
 import { fixedClock } from '../fixtures/fixed-clock.ts'
@@ -773,6 +776,17 @@ describe('run: the error mappings', () => {
 		expect(environment.diagnostics).toEqual([])
 		expect(environment.out).toEqual([])
 		expect(environment.writes).toEqual([])
+	})
+
+	it('a colliding path carrying a control character stays on the one usage line', async () => {
+		const environment = environmentOf({ 'odd\nname.json': CONTRACT_JSON })
+		await invoke(
+			['compile', '--in', 'odd\nname.json', '--out', 'odd\nname.json'],
+			environment,
+		)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --out resolves to "odd\\nname.json", which is also --in "odd\\nname.json"',
+		])
 	})
 
 	it('case 75: an --out colliding with an input is a usage error naming both sides, exit 64', async () => {
@@ -1734,6 +1748,17 @@ describe('run: score --designated-oracle', () => {
 		expect(environment.writes).toEqual([])
 	})
 
+	it('a refused identifier is shown with its control characters escaped and its backslashes as typed', async () => {
+		const { environment, exit } = await scoreWith([
+			'--designated-oracle',
+			'O\\002\u007f',
+		])
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --designated-oracle "O\\002\\u007f" is not an oracle identifier; expected O- followed by at least three digits',
+		])
+	})
+
 	it('a value carrying whitespace is not an oracle identifier', async () => {
 		const { environment, exit } = await scoreWith([
 			'--designated-oracle',
@@ -1783,5 +1808,188 @@ describe('run: score --designated-oracle', () => {
 		expect(exit).toBe(EXIT_USAGE)
 		expect(environment.diagnostics[0]).toContain('declares no oracle O-002')
 		expect(environment.writes).toEqual([])
+	})
+})
+
+describe('run: score --scored-at', () => {
+	const BEFORE_EXPIRY = '2026-11-19T11:00:00Z'
+	const EXPIRES_AT = '2026-11-19T12:00:00Z'
+	const AFTER_EXPIRY = '2026-11-19T13:00:00Z'
+
+	type Gap = { readonly rule: string; readonly waiverId: string | null }
+	type Artifact = {
+		readonly productionVerdict: string
+		readonly coverageGaps: readonly Gap[]
+	}
+
+	/** A clock that fails the case if read: the pinned instant must replace it. */
+	const unreadClock = () => ({
+		read: vi.fn(async () => {
+			throw new Error(
+				'the system clock was read although --scored-at was given',
+			)
+		}),
+	})
+
+	/** The fixture chain at a lowered floor, so its coverage gaps reach the verdict. */
+	const filesWith = (
+		waivers: Parameters<typeof waivedScoreFixtures>[0],
+	): Record<string, string> => {
+		const { contract, record, manifest } = waivedScoreFixtures(waivers)
+		return scoreFiles({
+			'record.json': JSON.stringify(record),
+			'contract.json': JSON.stringify(contract),
+			'isolation-manifest.json': JSON.stringify(manifest),
+			'policy.json': JSON.stringify(loweredFloorPolicyForScore),
+		})
+	}
+
+	const scoreWith = async (
+		files: Record<string, string>,
+		extra: readonly string[],
+		clock: RunEnvironment['clock'] = fixedClock(),
+	) => {
+		const environment = {
+			...environmentOf(files, '', [], SCORE_CORPUS_FILES),
+			clock,
+		}
+		const facade = facadeOf()
+		const result = await invoke([...SCORE_ARGV, ...extra], environment, facade)
+		const body = environment.out[0]
+		return {
+			...result,
+			environment,
+			facade,
+			body,
+			artifact: body === undefined ? undefined : (JSON.parse(body) as Artifact),
+		}
+	}
+
+	/** The unwaived chain's gap rules, read off the command's own artifact. */
+	const gapRules = async (): Promise<readonly string[]> => {
+		const { artifact } = await scoreWith(filesWith([]), [])
+		const rules = artifact?.coverageGaps.map((gap) => gap.rule) ?? []
+		expect(rules.length).toBeGreaterThan(0)
+		return rules
+	}
+
+	it('before the waiver expires it applies: PASS, each gap carrying its waiver id, and the system clock unread', async () => {
+		const rules = await gapRules()
+		const waivers = waiversNaming(rules, EXPIRES_AT)
+		const clock = unreadClock()
+		const { artifact, exit, outcome } = await scoreWith(
+			filesWith(waivers),
+			['--scored-at', BEFORE_EXPIRY],
+			clock,
+		)
+		expect(outcome).toMatchObject({ kind: 'verdict', verdict: 'PASS' })
+		expect(exit).toBe(EXIT_OK)
+		expect(artifact?.productionVerdict).toBe('PASS')
+		expect(artifact?.coverageGaps).toEqual(
+			rules.map((rule, index) =>
+				expect.objectContaining({ rule, waiverId: waivers[index]?.id }),
+			),
+		)
+		expect(clock.read).not.toHaveBeenCalled()
+	})
+
+	it('after the waiver expires it does not: CONCERNS, every waiverId null, and the system clock unread', async () => {
+		const rules = await gapRules()
+		const clock = unreadClock()
+		const { artifact, exit, outcome } = await scoreWith(
+			filesWith(waiversNaming(rules, EXPIRES_AT)),
+			[`--scored-at=${AFTER_EXPIRY}`],
+			clock,
+		)
+		expect(outcome).toMatchObject({ kind: 'verdict', verdict: 'CONCERNS' })
+		expect(exit).toBe(EXIT_OK)
+		expect(artifact?.productionVerdict).toBe('CONCERNS')
+		expect(artifact?.coverageGaps.map((gap) => gap.waiverId)).toEqual(
+			rules.map(() => null),
+		)
+		expect(clock.read).not.toHaveBeenCalled()
+	})
+
+	it('at the expiry instant itself the waiver has expired', async () => {
+		const rules = await gapRules()
+		const { artifact } = await scoreWith(
+			filesWith(waiversNaming(rules, EXPIRES_AT)),
+			['--scored-at', EXPIRES_AT],
+			unreadClock(),
+		)
+		expect(artifact?.productionVerdict).toBe('CONCERNS')
+	})
+
+	it('compares the pinned instant with an expiry past the millisecond', async () => {
+		const rules = await gapRules()
+		const files = filesWith(waiversNaming(rules, '2026-11-19T12:00:00.000002Z'))
+		const before = await scoreWith(
+			files,
+			['--scored-at', '2026-11-19T12:00:00.000001Z'],
+			unreadClock(),
+		)
+		const after = await scoreWith(
+			files,
+			['--scored-at', '2026-11-19T12:00:00.000003Z'],
+			unreadClock(),
+		)
+		expect(before.artifact?.productionVerdict).toBe('PASS')
+		expect(after.artifact?.productionVerdict).toBe('CONCERNS')
+	})
+
+	it('absent, the environment clock supplies the instant and is read once', async () => {
+		const rules = await gapRules()
+		const files = filesWith(waiversNaming(rules, EXPIRES_AT))
+		const before = { read: vi.fn(async () => ({ now: BEFORE_EXPIRY })) }
+		const after = { read: vi.fn(async () => ({ now: AFTER_EXPIRY })) }
+		const early = await scoreWith(files, [], before)
+		const late = await scoreWith(files, [], after)
+		expect(early.artifact?.productionVerdict).toBe('PASS')
+		expect(late.artifact?.productionVerdict).toBe('CONCERNS')
+		expect(before.read).toHaveBeenCalledTimes(1)
+		expect(after.read).toHaveBeenCalledTimes(1)
+		expect(early.facade.runScore.mock.calls[0]?.[0].clock).toBe(before)
+	})
+
+	it('the instant leaves no trace in the artifact: one pinned instant gives byte-identical artifacts whatever the system clock says', async () => {
+		const rules = await gapRules()
+		const files = filesWith(waiversNaming(rules, EXPIRES_AT))
+		const first = await scoreWith(files, ['--scored-at', BEFORE_EXPIRY], {
+			read: vi.fn(async () => ({ now: '2020-01-01T00:00:00Z' })),
+		})
+		const second = await scoreWith(files, ['--scored-at', BEFORE_EXPIRY], {
+			read: vi.fn(async () => ({ now: '2099-01-01T00:00:00Z' })),
+		})
+		expect(first.body).toBeDefined()
+		expect(first.body).toBe(second.body)
+		expect(first.body).not.toContain(BEFORE_EXPIRY)
+	})
+
+	it('a malformed instant exits 64 naming the flag, reading no input and calling no orchestration', async () => {
+		const clock = unreadClock()
+		const { environment, exit, outcome, facade } = await scoreWith(
+			scoreFiles(),
+			['--scored-at', '2026-11-19T12:00:00+01:00'],
+			clock,
+		)
+		expect(outcome).toEqual({ kind: 'usage-error' })
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --scored-at "2026-11-19T12:00:00+01:00" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z',
+		])
+		expect(environment.reads).toEqual([])
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
+		expect(facade.runScore).not.toHaveBeenCalled()
+		expect(clock.read).not.toHaveBeenCalled()
+	})
+
+	it('help score lists the flag and its description', async () => {
+		const scoped = environmentOf()
+		await invoke(['help', 'score'], scoped)
+		expect(scoped.out[0]).toContain('[--scored-at <timestamp>]')
+		expect(scoped.out[0]).toContain(
+			"--scored-at <timestamp>           the RFC 3339 UTC instant a contract waiver's expiresAt is tested",
+		)
 	})
 })

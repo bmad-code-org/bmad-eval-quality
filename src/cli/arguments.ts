@@ -4,6 +4,8 @@
  * because every command is non-interactive. Paths are carried through exactly
  * as given and resolved by the caller.
  */
+import { isScoringInstant } from '../adapters/fixed-clock-adapter.ts'
+import { displayToken } from '../application/display-token.ts'
 
 export type Command =
 	| 'compile'
@@ -56,6 +58,8 @@ export type ParsedInvocation =
 			readonly designatedOracle: string | null
 			/** `score`'s optional corpus-port root; `null` for every other command, and legal for `score` too when no private reference needs resolving. */
 			readonly corpusRoot: string | null
+			/** `score`'s optional scoring instant, an `Rfc3339Utc` timestamp; `null` when absent, where the system clock answers, and for every other command. */
+			readonly scoredAt: string | null
 			readonly strictInputs: boolean
 			readonly strict: boolean
 	  }
@@ -145,6 +149,15 @@ const TAKES_DESIGNATED_ORACLE: Readonly<Record<Command, boolean>> = {
 	'aggregate-strength': false,
 }
 
+/** `--scored-at` pins the instant `score` tests a contract waiver's `expiresAt` against; absent, the system clock answers. */
+const TAKES_SCORED_AT: Readonly<Record<Command, boolean>> = {
+	compile: false,
+	seal: false,
+	preflight: false,
+	score: true,
+	'aggregate-strength': false,
+}
+
 const STDIN = '-'
 
 const isRepeatable = (key: InputKey): key is RepeatableInputKey =>
@@ -177,13 +190,13 @@ export function parseArguments(argv: readonly string[]): ParsedInvocation {
 		if (target === undefined) return { kind: 'help', command: null }
 		if (isCommand(target)) return { kind: 'help', command: target }
 		return usageError(
-			`unknown command "${target}"; expected one of ${COMMANDS.join(', ')}`,
+			`unknown command "${displayToken(target)}"; expected one of ${COMMANDS.join(', ')}`,
 		)
 	}
 	if (first === '--version' || first === '-V') return { kind: 'version' }
 	if (!isCommand(first)) {
 		return usageError(
-			`unknown command "${first}"; expected one of ${COMMANDS.join(', ')}`,
+			`unknown command "${displayToken(first)}"; expected one of ${COMMANDS.join(', ')}`,
 		)
 	}
 	return parseCommand(first, argv.slice(1))
@@ -201,6 +214,7 @@ function parseCommand(
 		| 'corpus-digest'
 		| 'corpus-root'
 		| 'designated-oracle'
+		| 'scored-at'
 	>()
 	for (const key of INPUT_KEYS[command]) valueFlags.set(`--${key}`, key)
 	valueFlags.set('--out', 'out')
@@ -212,6 +226,7 @@ function parseCommand(
 	if (TAKES_DESIGNATED_ORACLE[command]) {
 		valueFlags.set('--designated-oracle', 'designated-oracle')
 	}
+	if (TAKES_SCORED_AT[command]) valueFlags.set('--scored-at', 'scored-at')
 
 	const inputs: Partial<Record<Exclude<InputKey, RepeatableInputKey>, string>> =
 		{}
@@ -225,6 +240,7 @@ function parseCommand(
 	let corpusDigest: string | null = null
 	let corpusRoot: string | null = null
 	let designatedOracle: string | null = null
+	let scoredAt: string | null = null
 	let strictInputs = true
 	let strict = false
 
@@ -245,7 +261,7 @@ function parseCommand(
 		// beginning with `-` is what the equals form is for.
 		if (value.length > 1 && value.startsWith('-')) {
 			return usageError(
-				`${flag} requires a value, but the next token is "${value}"; use ${flag}=${value} for a value that begins with "-"`,
+				`${flag} requires a value, but the next token is "${displayToken(value)}"; use ${flag}=${displayToken(value)} for a value that begins with "-"`,
 			)
 		}
 		return { value, next: index + 2 }
@@ -257,7 +273,7 @@ function parseCommand(
 			const positional = rest[index + 1]
 			if (positional === undefined) break
 			return usageError(
-				`${command} takes no positional argument, but got "${positional}"`,
+				`${command} takes no positional argument, but got "${displayToken(positional)}"`,
 			)
 		}
 		if (token === '--help' || token === '-h') {
@@ -282,7 +298,7 @@ function parseCommand(
 			const previous = seen.get(flag)
 			if (previous !== undefined && previous !== taken.value) {
 				return usageError(
-					`${flag} given twice with different values, "${previous}" and "${taken.value}"`,
+					`${flag} given twice with different values, "${displayToken(previous)}" and "${displayToken(taken.value)}"`,
 				)
 			}
 			seen.set(flag, taken.value)
@@ -291,12 +307,15 @@ function parseCommand(
 			else if (target === 'corpus-digest') corpusDigest = taken.value
 			else if (target === 'corpus-root') corpusRoot = taken.value
 			else if (target === 'designated-oracle') designatedOracle = taken.value
+			else if (target === 'scored-at') scoredAt = taken.value
 			else inputs[target] = taken.value
 			index = taken.next
 			continue
 		}
 		if (inline !== null) {
-			return usageError(`unknown flag "${flag}" in "${token}"`)
+			return usageError(
+				`unknown flag "${displayToken(flag)}" in "${displayToken(token)}"`,
+			)
 		}
 		if (flag === '--strict') {
 			strict = true
@@ -313,7 +332,7 @@ function parseCommand(
 			index += 1
 			continue
 		}
-		return usageError(`unknown flag "${token}" for ${command}`)
+		return usageError(`unknown flag "${displayToken(token)}" for ${command}`)
 	}
 
 	const missing = INPUT_KEYS[command]
@@ -338,6 +357,14 @@ function parseCommand(
 	}
 	if (missing.length > 0) {
 		return usageError(`${command} requires ${missing.join(', ')}`)
+	}
+	// Checked by the rule the clock response itself is parsed with, so a value
+	// the fixed clock would refuse exits as a usage error naming the flag,
+	// before any input is read.
+	if (scoredAt !== null && !isScoringInstant(scoredAt)) {
+		return usageError(
+			`--scored-at "${displayToken(scoredAt)}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
+		)
 	}
 
 	// One stdin cannot serve two readers, so at most one input may be `-`.
@@ -372,6 +399,7 @@ function parseCommand(
 		corpusDigest,
 		designatedOracle,
 		corpusRoot,
+		scoredAt,
 		strictInputs,
 		strict,
 	}
