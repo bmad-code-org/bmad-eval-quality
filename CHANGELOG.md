@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [10.0.0] - 2026-11-19
+
 ### Changed
 
 - `EvidenceArtifact` is now `schemaVersion` 5. Each `coverageGaps` entry carries a required `waiverId`, the id of the contract waiver honoured over that gap or `null`. A version-4 artifact no longer parses, and readers of evidence artifacts need this release.
