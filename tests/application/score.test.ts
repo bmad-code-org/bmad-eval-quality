@@ -1193,6 +1193,19 @@ describe('runScore: a caller-named designated oracle', () => {
 		)
 	})
 
+	it.each([null, 123, {}] as const)(
+		'refuses a non-string identifier %s from an untyped caller as a DesignatedOracleRefusal',
+		async (value) => {
+			const refusal: unknown = await twoOracle({
+				designatedOracleId: value as unknown as string,
+			}).catch((error: unknown) => error)
+			expect(refusal).toBeInstanceOf(DesignatedOracleRefusal)
+			expect((refusal as Error).message).toContain(
+				`--designated-oracle "${String(value)}" is not an oracle identifier`,
+			)
+		},
+	)
+
 	it('refuses an oracle the contract does not declare', async () => {
 		const undeclared = {
 			...twoOracleScoreContractFixture,
