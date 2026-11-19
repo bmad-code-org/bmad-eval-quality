@@ -778,6 +778,17 @@ describe('run: the error mappings', () => {
 		expect(environment.writes).toEqual([])
 	})
 
+	it('a colliding path carrying a control character stays on the one usage line', async () => {
+		const environment = environmentOf({ 'odd\nname.json': CONTRACT_JSON })
+		await invoke(
+			['compile', '--in', 'odd\nname.json', '--out', 'odd\nname.json'],
+			environment,
+		)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --out resolves to "odd\\nname.json", which is also --in "odd\\nname.json"',
+		])
+	})
+
 	it('case 75: an --out colliding with an input is a usage error naming both sides, exit 64', async () => {
 		const environment = environmentOf({ 'contract.json': CONTRACT_JSON })
 		const { outcome, exit } = await invoke(

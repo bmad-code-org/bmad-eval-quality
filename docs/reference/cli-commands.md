@@ -235,6 +235,7 @@ Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. T
 - An empty value exits `64`, in both the `--in=` and the `--in ""` form.
 - In the space form, a next token longer than one character that begins with `-` is read as the next flag, so the command reports a missing value and points at the `=` form. A bare `-` stays legal, since it names stdin.
 - `--record` and `--evidence` collect every occurrence, as a trial record and as a per-probe evidence artifact. `--designated-oracle` exits `64` on any repeat, identical values included, because one probe has one designated oracle. Every other value flag accepts an identical repeat and exits `64` when repeated with different values.
+- A usage message quotes what you typed with every control character escaped, a newline as `\n` and an escape as `\u001b`, so each message stays on its one `eval-quality: usage:` line. Backslashes and quotes appear as typed.
 - `--` at the end of the line is ignored. A positional argument exits `64`, because no command takes one.
 - `--help` or `-h` anywhere a flag is expected prints that command's help and exits `0`. Where a value is expected it is read as that value and exits `64`, so `compile --in --help` is a usage error.
 

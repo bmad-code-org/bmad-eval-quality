@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { ParsedInvocation } from '../../src/cli/arguments.ts'
-import { COMMANDS, parseArguments } from '../../src/cli/arguments.ts'
+import { COMMANDS, parseArguments, shown } from '../../src/cli/arguments.ts'
 
 type RunInvocation = Extract<ParsedInvocation, { kind: 'run' }>
 type UsageError = Extract<ParsedInvocation, { kind: 'usage-error' }>
@@ -289,6 +289,89 @@ describe('cli arguments: the six usage-error shapes (cases 18-23)', () => {
 	it('case 23: an empty argv names the three commands it expected', () => {
 		const { message } = parseUsageError([])
 		expect(message).toContain(COMMANDS.join(', '))
+	})
+})
+
+describe('cli arguments: a typed token stays on one diagnostic line', () => {
+	it('shown escapes C0 and C1 controls and DEL, and leaves everything else as typed', () => {
+		expect(shown('a\nb\rc\td')).toBe('a\\nb\\rc\\td')
+		expect(shown('\u0000\u001b[31m\u007f\u009b')).toBe(
+			'\\u0000\\u001b[31m\\u007f\\u009b',
+		)
+		expect(shown('C:\\runs\\"quoted" é 日本 🙂')).toBe(
+			'C:\\runs\\"quoted" é 日本 🙂',
+		)
+		expect(shown('')).toBe('')
+	})
+
+	const SCORE_ARGV = [
+		'score',
+		'--record',
+		'record.json',
+		'--contract',
+		'contract.json',
+		'--probe',
+		'probe.json',
+		'--preflight-verdict',
+		'preflight-verdict.json',
+		'--policy',
+		'policy.json',
+		'--corpus-digest',
+		'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+	]
+
+	it.each([
+		[
+			'an unknown command',
+			['comp\nile'],
+			'unknown command "comp\\nile"; expected one of compile, seal, preflight, score, aggregate-strength',
+		],
+		[
+			'an unknown help target',
+			['help', 'x\r'],
+			'unknown command "x\\r"; expected one of compile, seal, preflight, score, aggregate-strength',
+		],
+		[
+			'a flag-shaped next token',
+			['compile', '--in', '-invalid\n'],
+			'--in requires a value, but the next token is "-invalid\\n"; use --in=-invalid\\n for a value that begins with "-"',
+		],
+		[
+			'a positional after --',
+			['compile', '--', 'x\n'],
+			'compile takes no positional argument, but got "x\\n"',
+		],
+		[
+			'two different values',
+			[
+				...SCORE_ARGV,
+				'--scored-at',
+				'2026-11-19T12:00:00Z',
+				'--scored-at',
+				'2026-11-19T12:00:01Z\n',
+			],
+			'--scored-at given twice with different values, "2026-11-19T12:00:00Z" and "2026-11-19T12:00:01Z\\n"',
+		],
+		[
+			'an unknown flag in the equals form',
+			['compile', '--x\u001b=1'],
+			'unknown flag "--x\\u001b" in "--x\\u001b=1"',
+		],
+		[
+			'an unknown flag',
+			['compile', '--x\n'],
+			'unknown flag "--x\\n" for compile',
+		],
+		[
+			'a refused --scored-at',
+			[...SCORE_ARGV, '--scored-at', 'now\n'],
+			'--scored-at "now\\n" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z',
+		],
+	] as const)('%s', (_label, argv, message) => {
+		const parsed = parseUsageError(argv)
+		expect(parsed.message).toBe(message)
+		// Nothing left for `shown` to escape: the message holds no control character.
+		expect(shown(parsed.message)).toBe(parsed.message)
 	})
 })
 

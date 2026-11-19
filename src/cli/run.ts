@@ -23,7 +23,12 @@ import {
 	scanJson,
 	seal,
 } from '../application/index.ts'
-import type { Command, InputKey, ParsedInvocation } from './arguments.ts'
+import {
+	type Command,
+	type InputKey,
+	type ParsedInvocation,
+	shown,
+} from './arguments.ts'
 import type { CommandOutcome } from './exit-codes.ts'
 import {
 	EXIT_CODE_TABLE,
@@ -344,7 +349,7 @@ async function collides(
 				resolvedInput === resolvedTarget ||
 				(await environment.sameFile(resolvedInput, resolvedTarget))
 			) {
-				return `--out resolves to "${resolvedTarget}", which is also --${key} "${value}"`
+				return `--out resolves to "${shown(resolvedTarget)}", which is also --${key} "${shown(value)}"`
 			}
 		}
 	}

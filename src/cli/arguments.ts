@@ -165,6 +165,31 @@ const isRepeatable = (key: InputKey): key is RepeatableInputKey =>
 const isCommand = (token: string): token is Command =>
 	(COMMANDS as readonly string[]).includes(token)
 
+/**
+ * A caller-typed token as a usage message shows it: every C0 and C1 control
+ * character and DEL escaped, everything else verbatim. A newline or a
+ * carriage return left raw splits the one `eval-quality: usage:` line, and an
+ * escape sequence would reach the terminal. Backslashes and quotes stay as
+ * typed, so a Windows path reads the way it was written.
+ */
+const CONTROL_ESCAPES: Readonly<Record<string, string>> = {
+	'\n': '\\n',
+	'\r': '\\r',
+	'\t': '\\t',
+}
+
+export function shown(token: string): string {
+	let out = ''
+	for (const character of token) {
+		const code = character.codePointAt(0) as number
+		if (code >= 0x20 && (code < 0x7f || code > 0x9f)) out += character
+		else
+			out +=
+				CONTROL_ESCAPES[character] ?? `\\u${code.toString(16).padStart(4, '0')}`
+	}
+	return out
+}
+
 const usageError = (message: string): ParsedInvocation => ({
 	kind: 'usage-error',
 	message,
@@ -189,13 +214,13 @@ export function parseArguments(argv: readonly string[]): ParsedInvocation {
 		if (target === undefined) return { kind: 'help', command: null }
 		if (isCommand(target)) return { kind: 'help', command: target }
 		return usageError(
-			`unknown command "${target}"; expected one of ${COMMANDS.join(', ')}`,
+			`unknown command "${shown(target)}"; expected one of ${COMMANDS.join(', ')}`,
 		)
 	}
 	if (first === '--version' || first === '-V') return { kind: 'version' }
 	if (!isCommand(first)) {
 		return usageError(
-			`unknown command "${first}"; expected one of ${COMMANDS.join(', ')}`,
+			`unknown command "${shown(first)}"; expected one of ${COMMANDS.join(', ')}`,
 		)
 	}
 	return parseCommand(first, argv.slice(1))
@@ -260,7 +285,7 @@ function parseCommand(
 		// beginning with `-` is what the equals form is for.
 		if (value.length > 1 && value.startsWith('-')) {
 			return usageError(
-				`${flag} requires a value, but the next token is "${value}"; use ${flag}=${value} for a value that begins with "-"`,
+				`${flag} requires a value, but the next token is "${shown(value)}"; use ${flag}=${shown(value)} for a value that begins with "-"`,
 			)
 		}
 		return { value, next: index + 2 }
@@ -272,7 +297,7 @@ function parseCommand(
 			const positional = rest[index + 1]
 			if (positional === undefined) break
 			return usageError(
-				`${command} takes no positional argument, but got "${positional}"`,
+				`${command} takes no positional argument, but got "${shown(positional)}"`,
 			)
 		}
 		if (token === '--help' || token === '-h') {
@@ -297,7 +322,7 @@ function parseCommand(
 			const previous = seen.get(flag)
 			if (previous !== undefined && previous !== taken.value) {
 				return usageError(
-					`${flag} given twice with different values, "${previous}" and "${taken.value}"`,
+					`${flag} given twice with different values, "${shown(previous)}" and "${shown(taken.value)}"`,
 				)
 			}
 			seen.set(flag, taken.value)
@@ -312,7 +337,7 @@ function parseCommand(
 			continue
 		}
 		if (inline !== null) {
-			return usageError(`unknown flag "${flag}" in "${token}"`)
+			return usageError(`unknown flag "${shown(flag)}" in "${shown(token)}"`)
 		}
 		if (flag === '--strict') {
 			strict = true
@@ -329,7 +354,7 @@ function parseCommand(
 			index += 1
 			continue
 		}
-		return usageError(`unknown flag "${token}" for ${command}`)
+		return usageError(`unknown flag "${shown(token)}" for ${command}`)
 	}
 
 	const missing = INPUT_KEYS[command]
@@ -360,7 +385,7 @@ function parseCommand(
 	// before any input is read.
 	if (scoredAt !== null && !isScoringInstant(scoredAt)) {
 		return usageError(
-			`--scored-at ${JSON.stringify(scoredAt)} is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
+			`--scored-at "${shown(scoredAt)}" is not an RFC 3339 UTC timestamp, such as 2026-11-19T12:00:00Z`,
 		)
 	}
 
