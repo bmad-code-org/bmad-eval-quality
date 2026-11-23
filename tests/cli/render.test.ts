@@ -6,6 +6,7 @@ import { serializeArtifact } from '../../src/application/serialize.ts'
 import {
 	EXIT_CODE_TABLE,
 	renderArtifact,
+	renderDefect,
 	renderDiagnostic,
 	renderError,
 	renderInvalidBasis,
@@ -315,5 +316,29 @@ describe('every renderer escapes the control characters a field carries', () => 
 	it('renderUsage escapes the message, and a message already escaped prints unchanged', () => {
 		expect(renderUsage(FORGE)).toBe(`eval-quality: usage: ${ESCAPED}`)
 		expect(renderUsage(ESCAPED)).toBe(`eval-quality: usage: ${ESCAPED}`)
+	})
+})
+
+describe('renderDefect', () => {
+	it('escapes the first line of a stack and keeps its frames as written', () => {
+		const error = new TypeError('bad value x\neval-quality: usage: forged')
+		const frames = (error.stack as string).slice(String(error).length)
+		expect(frames.startsWith('\n    at ')).toBe(true)
+		expect(renderDefect(error)).toBe(
+			`TypeError: bad value x\\neval-quality: usage: forged${frames}`,
+		)
+	})
+
+	it('escapes a stack whole when it does not open with the error line', () => {
+		const error = new Error('m')
+		error.stack = 'custom\nstack\u2028'
+		expect(renderDefect(error)).toBe('custom\\nstack\\u2028')
+	})
+
+	it('escapes the message of an error with no stack, and a thrown non-error', () => {
+		const error = new Error('a\nb')
+		error.stack = undefined
+		expect(renderDefect(error)).toBe('a\\nb')
+		expect(renderDefect('x\u001by')).toBe('x\\u001by')
 	})
 })

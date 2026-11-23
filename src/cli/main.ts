@@ -17,7 +17,7 @@ import { displayToken } from '../application/display-token.ts'
 import { parseArguments } from './arguments.ts'
 import type { CommandOutcome } from './exit-codes.ts'
 import { exitCodeFor } from './exit-codes.ts'
-import { renderError, renderUsage } from './render.ts'
+import { renderDefect, renderError, renderUsage } from './render.ts'
 import { type RunEnvironment, run } from './run.ts'
 
 /**
@@ -147,9 +147,7 @@ function failureOutcome(error: unknown): CommandOutcome {
 		writeStderr(renderError(error))
 		return { kind: 'fault' }
 	}
-	writeStderr(
-		error instanceof Error ? (error.stack ?? error.message) : String(error),
-	)
+	writeStderr(renderDefect(error))
 	return { kind: 'fault' }
 }
 

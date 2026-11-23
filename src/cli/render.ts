@@ -1,9 +1,8 @@
 /**
  * The five shapes the binary writes, and the exit-code table two documents
- * share. Every line the CLI emits is produced here apart from what `main.ts`
- * writes for a rethrown defect, which is that error's own stack or message, so a
- * format change is one file. Six
- * renderers over the five shapes: a qualification failure and an error both
+ * share. Every line the CLI emits is produced here, a rethrown defect's stack
+ * included, so a format change is one file. Six renderers over the five
+ * shapes, plus `renderDefect`: a qualification failure and an error both
  * print `<code>: <artifactPath>: <detail>`.
  *
  * Every field a line interpolates passes through `displayToken`, because each
@@ -162,6 +161,24 @@ export const EXIT_CODE_TABLE = `Exit codes (AD-21's six, plus 64 from sysexits.h
   1 and 2 come from the score command's verdict ladder. 3 comes from a failed
   pre-flight, which the preflight command reports, or from any other
   invalidating condition score finds.`
+
+/**
+ * A defect in this package's own code: its stack, which is multi-line by
+ * design, with the first line escaped. That line is `String(error)`, the
+ * error's name and message, and the message is where a caller's value can
+ * appear. The frames below it name source locations and stay as written. A
+ * stack that does not open with that line is escaped whole, and an error with
+ * no stack prints its escaped message.
+ */
+export function renderDefect(error: unknown): string {
+	if (!(error instanceof Error)) return displayToken(String(error))
+	const { stack } = error
+	if (stack === undefined) return displayToken(error.message)
+	const head = String(error)
+	return stack.startsWith(head)
+		? `${displayToken(head)}${stack.slice(head.length)}`
+		: displayToken(stack)
+}
 
 /** `eval-quality: usage: <message>` */
 export function renderUsage(message: string): string {

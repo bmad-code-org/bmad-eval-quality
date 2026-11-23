@@ -294,8 +294,9 @@ describe('cli arguments: the six usage-error shapes (cases 18-23)', () => {
 })
 
 describe('cli arguments: a typed token stays on one diagnostic line', () => {
-	it('displayToken escapes C0 and C1 controls and DEL, and leaves everything else as typed', () => {
+	it('displayToken escapes C0 and C1 controls, DEL, the Unicode line separators and the bidirectional controls, and leaves everything else as typed', () => {
 		expect(displayToken('a\nb\rc\td')).toBe('a\\nb\\rc\\td')
+		expect(displayToken('a\u2028b\u2029c')).toBe('a\\u2028b\\u2029c')
 		expect(displayToken('\u0000\u001b[31m\u007f\u009b')).toBe(
 			'\\u0000\\u001b[31m\\u007f\\u009b',
 		)
@@ -303,6 +304,38 @@ describe('cli arguments: a typed token stays on one diagnostic line', () => {
 			'C:\\runs\\"quoted" é 日本 🙂',
 		)
 		expect(displayToken('')).toBe('')
+	})
+
+	it('displayToken escapes exactly the code points on each side of every boundary it draws', () => {
+		const escaped = [
+			0x00, 0x1f, 0x7f, 0x80, 0x9f, 0x061c, 0x200e, 0x200f, 0x2028, 0x2029,
+			0x202a, 0x202e, 0x2066, 0x2069,
+		]
+		const verbatim = [
+			0x20, 0x7e, 0xa0, 0x061b, 0x061d, 0x200d, 0x2010, 0x2027, 0x202f, 0x2065,
+			0x206a, 0x1f642,
+		]
+		for (const code of escaped) {
+			const character = String.fromCodePoint(code)
+			const expected =
+				{ 9: '\\t', 10: '\\n', 13: '\\r' }[code] ??
+				`\\u${code.toString(16).padStart(4, '0')}`
+			expect(displayToken(character), code.toString(16)).toBe(expected)
+		}
+		for (const code of verbatim) {
+			const character = String.fromCodePoint(code)
+			expect(displayToken(character), code.toString(16)).toBe(character)
+		}
+	})
+
+	it('displayToken leaves its own output unchanged, for every code point in the planes it escapes in', () => {
+		let all = ''
+		for (let code = 0; code <= 0x2100; code += 1) {
+			if (code < 0xd800 || code > 0xdfff) all += String.fromCodePoint(code)
+		}
+		const once = displayToken(all)
+		expect(displayToken(once)).toBe(once)
+		expect(once).not.toBe(all)
 	})
 
 	const SCORE_ARGV = [
