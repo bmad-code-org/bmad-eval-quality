@@ -1,12 +1,19 @@
 /**
  * The five shapes the binary writes, and the exit-code table two documents
- * share. Every line the CLI emits is produced here apart from what `main.ts`
- * writes for a rethrown defect, which is that error's own stack or message, so a
- * format change is one file. Six
- * renderers over the five shapes: a qualification failure and an error both
+ * share. Every line the CLI emits is produced here, a rethrown defect's stack
+ * included, so a format change is one file. Six renderers over the five
+ * shapes, plus `renderDefect`: a qualification failure and an error both
  * print `<code>: <artifactPath>: <detail>`.
+ *
+ * Every field a line interpolates passes through `displayToken`, because each
+ * can carry a caller's bytes: a `--run-id`, an input path, a key name a parse
+ * issue quotes from the document. A newline left raw forges a whole
+ * `eval-quality:` line, and a C0 or C1 control reaches the terminal as an
+ * escape sequence. `displayToken` leaves its own output unchanged, so a
+ * message that already quoted its value through it prints the same bytes.
  */
 import { z } from 'zod'
+import { displayToken } from '../application/display-token.ts'
 import {
 	AggregationRefusal,
 	type Diagnostic,
@@ -58,7 +65,10 @@ function issueLocation(path: ReadonlyArray<PropertyKey>): string {
 function renderParseIssues(cause: unknown): string {
 	if (!(cause instanceof z.ZodError)) return ''
 	const lines = cause.issues
-		.map((issue) => `  ${issueLocation(issue.path)}: ${issue.message}`)
+		.map(
+			(issue) =>
+				`  ${displayToken(issueLocation(issue.path))}: ${displayToken(issue.message)}`,
+		)
 		.sort()
 	const shown = lines.slice(0, ISSUE_LIMIT)
 	const hidden = lines.length - shown.length
@@ -79,7 +89,7 @@ export function renderArtifact(
 
 /** `eval-quality: <stage>: <runId>: <message>` */
 export function renderDiagnostic(diagnostic: Diagnostic): string {
-	return `${PREFIX}: ${diagnostic.stage}: ${diagnostic.runId}: ${diagnostic.message}`
+	return `${PREFIX}: ${diagnostic.stage}: ${displayToken(diagnostic.runId)}: ${displayToken(diagnostic.message)}`
 }
 
 /**
@@ -100,9 +110,9 @@ export function renderError(error: unknown): string {
 			? error.message.slice(prefix.length)
 			: error.message
 		const issues = renderParseIssues(error.cause)
-		return `${PREFIX}: ${error.code}: ${error.artifactPath}: ${detail}${issues}`
+		return `${PREFIX}: ${error.code}: ${displayToken(error.artifactPath)}: ${displayToken(detail)}${issues}`
 	}
-	return `${PREFIX}: ${String(error)}`
+	return `${PREFIX}: ${displayToken(String(error))}`
 }
 
 /**
@@ -115,7 +125,7 @@ export function renderError(error: unknown): string {
 export function renderQualificationFailure(
 	failure: QualificationFailure,
 ): string {
-	return `${PREFIX}: ${failure.code}: ${failure.artifactPath}: ${failure.detail}`
+	return `${PREFIX}: ${failure.code}: ${displayToken(failure.artifactPath)}: ${displayToken(failure.detail)}`
 }
 
 /**
@@ -125,7 +135,7 @@ export function renderQualificationFailure(
  * without these lines a `score` exit 3 names no reason at all.
  */
 export function renderInvalidBasis(reason: string): string {
-	return `${PREFIX}: invalid: ${reason}`
+	return `${PREFIX}: invalid: ${displayToken(reason)}`
 }
 
 /**
@@ -152,7 +162,25 @@ export const EXIT_CODE_TABLE = `Exit codes (AD-21's six, plus 64 from sysexits.h
   pre-flight, which the preflight command reports, or from any other
   invalidating condition score finds.`
 
+/**
+ * A defect in this package's own code: its stack, which is multi-line by
+ * design, with the first line escaped. That line is `String(error)`, the
+ * error's name and message, and the message is where a caller's value can
+ * appear. The frames below it name source locations and stay as written. A
+ * stack that does not open with that line is escaped whole, and an error with
+ * no stack prints its escaped message.
+ */
+export function renderDefect(error: unknown): string {
+	if (!(error instanceof Error)) return displayToken(String(error))
+	const { stack } = error
+	if (stack === undefined) return displayToken(error.message)
+	const head = String(error)
+	return stack.startsWith(head)
+		? `${displayToken(head)}${stack.slice(head.length)}`
+		: displayToken(stack)
+}
+
 /** `eval-quality: usage: <message>` */
 export function renderUsage(message: string): string {
-	return `${PREFIX}: usage: ${message}`
+	return `${PREFIX}: usage: ${displayToken(message)}`
 }

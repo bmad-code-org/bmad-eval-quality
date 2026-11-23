@@ -6,6 +6,7 @@ import { serializeArtifact } from '../../src/application/serialize.ts'
 import {
 	EXIT_CODE_TABLE,
 	renderArtifact,
+	renderDefect,
 	renderDiagnostic,
 	renderError,
 	renderInvalidBasis,
@@ -255,5 +256,89 @@ describe('the digest agreement over rendered output', () => {
 		expect(EXIT_CODE_TABLE).toContain('score')
 		expect(EXIT_CODE_TABLE).not.toMatch(/ships in a later release/)
 		expect(EXIT_CODE_TABLE).not.toMatch(/no command here reaches/)
+	})
+})
+
+/**
+ * Each renderer writes one stderr line, and every field it interpolates can
+ * carry a caller's bytes. A raw newline forges an `eval-quality:` line and a
+ * C0 or C1 control reaches the terminal, so every field is escaped the way
+ * `displayToken` quotes a value.
+ */
+describe('every renderer escapes the control characters a field carries', () => {
+	const FORGE = 'x\neval-quality: usage: forged\u001b[2K\u009b'
+	const ESCAPED = 'x\\neval-quality: usage: forged\\u001b[2K\\u009b'
+
+	it('renderDiagnostic escapes the run identifier and the message', () => {
+		expect(
+			renderDiagnostic({ runId: FORGE, stage: 'preflight', message: FORGE }),
+		).toBe(`eval-quality: preflight: ${ESCAPED}: ${ESCAPED}`)
+	})
+
+	it('renderError escapes the artifact path, the detail, and each parse issue', () => {
+		let cause: unknown
+		try {
+			z.strictObject({}).parse({ [FORGE]: 1 })
+		} catch (error) {
+			cause = error
+		}
+		const fault = new RuntimeFault('schema-parse-failure', FORGE, FORGE, {
+			cause,
+		})
+		const [first, ...issues] = renderError(fault).split('\n')
+		expect(first).toBe(
+			`eval-quality: schema-parse-failure: ${ESCAPED}: ${ESCAPED}`,
+		)
+		expect(issues).toHaveLength(1)
+		expect(issues[0]).toContain(`"${ESCAPED}"`)
+	})
+
+	it('renderError escapes the String(error) fallback', () => {
+		expect(renderError(new Error(FORGE))).toBe(
+			`eval-quality: Error: ${ESCAPED}`,
+		)
+	})
+
+	it('renderQualificationFailure escapes the artifact path and the detail', () => {
+		expect(
+			renderQualificationFailure({
+				code: 'signature-absent',
+				artifactPath: FORGE,
+				detail: FORGE,
+			}),
+		).toBe(`eval-quality: signature-absent: ${ESCAPED}: ${ESCAPED}`)
+	})
+
+	it('renderInvalidBasis escapes the reason', () => {
+		expect(renderInvalidBasis(FORGE)).toBe(`eval-quality: invalid: ${ESCAPED}`)
+	})
+
+	it('renderUsage escapes the message, and a message already escaped prints unchanged', () => {
+		expect(renderUsage(FORGE)).toBe(`eval-quality: usage: ${ESCAPED}`)
+		expect(renderUsage(ESCAPED)).toBe(`eval-quality: usage: ${ESCAPED}`)
+	})
+})
+
+describe('renderDefect', () => {
+	it('escapes the first line of a stack and keeps its frames as written', () => {
+		const error = new TypeError('bad value x\neval-quality: usage: forged')
+		const frames = (error.stack as string).slice(String(error).length)
+		expect(frames.startsWith('\n    at ')).toBe(true)
+		expect(renderDefect(error)).toBe(
+			`TypeError: bad value x\\neval-quality: usage: forged${frames}`,
+		)
+	})
+
+	it('escapes a stack whole when it does not open with the error line', () => {
+		const error = new Error('m')
+		error.stack = 'custom\nstack\u2028'
+		expect(renderDefect(error)).toBe('custom\\nstack\\u2028')
+	})
+
+	it('escapes the message of an error with no stack, and a thrown non-error', () => {
+		const error = new Error('a\nb')
+		error.stack = undefined
+		expect(renderDefect(error)).toBe('a\\nb')
+		expect(renderDefect('x\u001by')).toBe('x\\u001by')
 	})
 })

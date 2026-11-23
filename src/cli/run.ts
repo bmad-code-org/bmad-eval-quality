@@ -295,10 +295,12 @@ async function readJson(
 	} catch (error) {
 		if (error instanceof RuntimeFault) throw error
 		// AD-28's `schema-parse-failure` covers an artifact that does not parse,
-		// and the CLI is the boundary that deserializes.
+		// and the CLI is the boundary that deserializes. The path is quoted, so
+		// a quote inside it is escaped as well, or it would read as the closing
+		// delimiter; a backslash stays as typed so a Windows path reads as written.
 		const recordSource =
 			(key === 'record' || key === 'evidence') && value !== undefined
-				? ` ${JSON.stringify(value)}`
+				? ` "${displayToken(value).replaceAll('"', '\\"')}"`
 				: ''
 		throw new RuntimeFault(
 			'schema-parse-failure',

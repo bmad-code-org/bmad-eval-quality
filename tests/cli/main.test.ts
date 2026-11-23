@@ -1093,4 +1093,162 @@ describe('main.ts at the process boundary', () => {
 			}
 		}, 60_000)
 	})
+
+	/**
+	 * Every stderr line the binary writes is one diagnostic, so a caller's value
+	 * carrying a newline, an escape sequence or a C1 control must reach the
+	 * terminal escaped. Left raw, a newline forges a whole `eval-quality:` line
+	 * and U+009B is a one-byte CSI on terminals that honour C1 controls.
+	 */
+	describe('a caller value never splits or forges a stderr line', () => {
+		const WALKTHROUGH = join(REPO, 'examples/tutorials/walkthrough')
+		const cli = (
+			argv: readonly string[],
+		): { status: number | null; stdout: string; stderr: string } => {
+			const result = spawnSync(process.execPath, [BUILT_MAIN, ...argv], {
+				cwd: REPO,
+				encoding: 'utf8',
+			})
+			return {
+				status: result.status,
+				stdout: result.stdout,
+				stderr: result.stderr,
+			}
+		}
+
+		/**
+		 * A code point that ends or splits a line for some reader: a C0 or C1
+		 * control, DEL, or U+2028 and U+2029, which a JavaScript or Unicode-aware
+		 * reader splits on. Checked by code point, independently of
+		 * `displayToken`, so the test does not trust the helper it covers.
+		 */
+		const breaksLine = (character: string): boolean => {
+			const code = character.codePointAt(0) as number
+			return (
+				code < 0x20 ||
+				(code >= 0x7f && code <= 0x9f) ||
+				code === 0x2028 ||
+				code === 0x2029
+			)
+		}
+
+		/** Stderr as lines, after proving the only line-breaking character in it is the newline closing each line. */
+		const stderrLines = (stderr: string): string[] => {
+			expect(stderr.endsWith('\n')).toBe(true)
+			const lines = stderr.slice(0, -1).split('\n')
+			for (const line of lines) {
+				expect([...line].filter(breaksLine)).toEqual([])
+			}
+			return lines
+		}
+
+		it('preflight --run-id with a newline and an escape sequence prints one line per diagnostic', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const runId =
+				'run-1\neval-quality: preflight: forged: all clear\u001b[2K\u2028x\u2029y'
+			const result = cli([
+				'preflight',
+				'--contract',
+				join(WALKTHROUGH, 'contract.json'),
+				'--probes',
+				join(WALKTHROUGH, 'probes.json'),
+				'--observations',
+				join(WALKTHROUGH, 'observations.json'),
+				'--run-id',
+				runId,
+			])
+
+			expect(result.status).toBe(EXIT_OK)
+			const lines = stderrLines(result.stderr)
+			expect(lines.length).toBeGreaterThan(0)
+			for (const line of lines) {
+				expect(
+					line.startsWith(
+						'eval-quality: preflight: run-1\\neval-quality: preflight: forged: all clear\\u001b[2K\\u2028x\\u2029y: ',
+					),
+				).toBe(true)
+			}
+			// The artifact keeps the run identifier exactly as given: only the
+			// diagnostic line is escaped.
+			expect((JSON.parse(result.stdout) as { runId: string }).runId).toBe(runId)
+		}, 60_000)
+
+		/** The invocation that reads the named file first, for each input flag that repeats. */
+		const readsFirst = {
+			record: (path: string): string[] => [
+				'score',
+				'--record',
+				path,
+				'--contract',
+				join(WALKTHROUGH, 'contract.json'),
+				'--probe',
+				join(WALKTHROUGH, 'probe.json'),
+				'--preflight-verdict',
+				join(WALKTHROUGH, 'contract.json'),
+				'--policy',
+				join(WALKTHROUGH, 'scoring-policy.json'),
+				'--corpus-digest',
+				corpusDigestFixture,
+			],
+			evidence: (path: string): string[] => [
+				'aggregate-strength',
+				'--evidence',
+				path,
+				'--floors',
+				join(WALKTHROUGH, 'scoring-policy.json'),
+				'--policy',
+				join(WALKTHROUGH, 'scoring-policy.json'),
+			],
+		} as const
+
+		for (const [flag, artifactPath] of [
+			['record', 'SealedRunRecord'],
+			['evidence', 'EvidenceArtifact'],
+		] as const) {
+			it(`a --${flag} path is quoted with its controls and its own quote delimiter escaped, and its backslash as typed`, (ctx) => {
+				if (!BUILT) return ctx.skip(NEEDS_BUILD)
+				const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-escape-'))
+				try {
+					const path = join(scratch, 'run\u009b\u2028\\trial"draft.json')
+					writeFileSync(path, '{', 'utf8')
+					const result = cli(readsFirst[flag](path))
+
+					expect(result.status).toBe(EXIT_FAULT)
+					const [line, ...rest] = stderrLines(result.stderr)
+					expect(rest).toEqual([])
+					expect(line).toMatch(
+						new RegExp(
+							`^eval-quality: schema-parse-failure: ${artifactPath}: --${flag} "`,
+						),
+					)
+					expect(line).toContain(
+						`--${flag} "${join(scratch, 'run')}\\u009b\\u2028\\trial\\"draft.json" is not JSON: `,
+					)
+				} finally {
+					rmSync(scratch, { recursive: true, force: true })
+				}
+			}, 60_000)
+		}
+
+		it('a contract key carrying a newline and a C1 control is escaped in the parse issue list', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-escape-'))
+			try {
+				const contract = JSON.parse(
+					readFileSync(join(WALKTHROUGH, 'contract.json'), 'utf8'),
+				) as Record<string, unknown>
+				contract['evil\n  /forged: issue\u009b'] = 1
+				const source = join(scratch, 'contract.json')
+				writeFileSync(source, JSON.stringify(contract), 'utf8')
+				const result = cli(['compile', '--in', source])
+
+				expect(result.status).toBe(EXIT_FAULT)
+				const lines = stderrLines(result.stderr)
+				expect(lines).toHaveLength(2)
+				expect(lines[1]).toContain('"evil\\n  /forged: issue\\u009b"')
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+	})
 })

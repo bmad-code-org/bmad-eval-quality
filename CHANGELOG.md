@@ -10,6 +10,10 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- Every stderr diagnostic escapes control characters, the U+2028 and U+2029 separators and the bidirectional formatting controls in the values it carries, as usage messages already did for control characters. A `preflight` diagnostic printed `--run-id` raw, so a newline in it forged further `eval-quality:` lines. The not-JSON fault for `--record` and `--evidence` JSON-escaped the path, which left DEL and C1 controls raw and doubled a backslash; the path now appears as typed with controls and its double quotes escaped. A parse issue quoting an unrecognized key from the document printed that key raw, and a defect's stack trace printed its message raw. The emitted artifact keeps each value exactly as given. `DesignatedOracleRefusal`'s message escapes the separators and the bidirectional controls too.
+
 ## [10.1.0] - 2026-11-19
 
 ### Added
