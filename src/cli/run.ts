@@ -298,7 +298,7 @@ async function readJson(
 		// and the CLI is the boundary that deserializes.
 		const recordSource =
 			(key === 'record' || key === 'evidence') && value !== undefined
-				? ` ${JSON.stringify(value)}`
+				? ` "${displayToken(value)}"`
 				: ''
 		throw new RuntimeFault(
 			'schema-parse-failure',

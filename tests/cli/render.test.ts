@@ -257,3 +257,63 @@ describe('the digest agreement over rendered output', () => {
 		expect(EXIT_CODE_TABLE).not.toMatch(/no command here reaches/)
 	})
 })
+
+/**
+ * Each renderer writes one stderr line, and every field it interpolates can
+ * carry a caller's bytes. A raw newline forges an `eval-quality:` line and a
+ * C0 or C1 control reaches the terminal, so every field is escaped the way
+ * `displayToken` quotes a value.
+ */
+describe('every renderer escapes the control characters a field carries', () => {
+	const FORGE = 'x\neval-quality: usage: forged\u001b[2K\u009b'
+	const ESCAPED = 'x\\neval-quality: usage: forged\\u001b[2K\\u009b'
+
+	it('renderDiagnostic escapes the run identifier and the message', () => {
+		expect(
+			renderDiagnostic({ runId: FORGE, stage: 'preflight', message: FORGE }),
+		).toBe(`eval-quality: preflight: ${ESCAPED}: ${ESCAPED}`)
+	})
+
+	it('renderError escapes the artifact path, the detail, and each parse issue', () => {
+		let cause: unknown
+		try {
+			z.strictObject({}).parse({ [FORGE]: 1 })
+		} catch (error) {
+			cause = error
+		}
+		const fault = new RuntimeFault('schema-parse-failure', FORGE, FORGE, {
+			cause,
+		})
+		const [first, ...issues] = renderError(fault).split('\n')
+		expect(first).toBe(
+			`eval-quality: schema-parse-failure: ${ESCAPED}: ${ESCAPED}`,
+		)
+		expect(issues).toHaveLength(1)
+		expect(issues[0]).toContain(`"${ESCAPED}"`)
+	})
+
+	it('renderError escapes the String(error) fallback', () => {
+		expect(renderError(new Error(FORGE))).toBe(
+			`eval-quality: Error: ${ESCAPED}`,
+		)
+	})
+
+	it('renderQualificationFailure escapes the artifact path and the detail', () => {
+		expect(
+			renderQualificationFailure({
+				code: 'signature-absent',
+				artifactPath: FORGE,
+				detail: FORGE,
+			}),
+		).toBe(`eval-quality: signature-absent: ${ESCAPED}: ${ESCAPED}`)
+	})
+
+	it('renderInvalidBasis escapes the reason', () => {
+		expect(renderInvalidBasis(FORGE)).toBe(`eval-quality: invalid: ${ESCAPED}`)
+	})
+
+	it('renderUsage escapes the message, and a message already escaped prints unchanged', () => {
+		expect(renderUsage(FORGE)).toBe(`eval-quality: usage: ${ESCAPED}`)
+		expect(renderUsage(ESCAPED)).toBe(`eval-quality: usage: ${ESCAPED}`)
+	})
+})
