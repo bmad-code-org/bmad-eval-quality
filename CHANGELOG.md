@@ -10,6 +10,10 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- Every stderr line escapes control characters in the values it carries, as usage messages already did. A `preflight` diagnostic printed `--run-id` raw, so a newline in it forged further `eval-quality:` lines. The not-JSON fault for `--record` and `--evidence` JSON-escaped the path, which left DEL and C1 controls raw and doubled a backslash; the path now appears as typed with controls escaped. A parse issue quoting an unrecognized key from the document printed that key raw. The emitted artifact keeps each value exactly as given.
+
 ## [10.1.0] - 2026-11-19
 
 ### Added
