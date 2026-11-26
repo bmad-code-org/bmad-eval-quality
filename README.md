@@ -101,7 +101,7 @@ Deterministic work does not need it and already has cheaper, stronger evidence f
 
 ## The authoring discipline
 
-A contract carries no prescribed action sequence; the evaluator chooses its own path. What the contract fixes is seven rules that survived the experiments: separate the success indicator from the body, read the whole body, probe malformed and negative inputs, verify per record, cross-check sibling parameters and sibling tools, check for omissions and completeness, and read a state change back after writing it.
+A contract carries no prescribed action sequence; the evaluator chooses its own path. What the contract fixes is seven rules that survived the experiments: separate the success indicator from the body, read the whole body, probe malformed and negative inputs, verify per record, cross-check sibling parameters and sibling tools, check for omissions and completeness, and read a state change back after writing it. For a skill that writes documents, all seven rules still apply, and four of them map to three checks: exclusion, which reads the whole document for content the request ruled out (the whole body); negative inputs, which give the skill a malformed request (malformed and negative inputs); and reading back the artifact the skill wrote, so the evidence holds the document itself and the skill's report of success sits apart from it (the success indicator, the state change read back).
 
 The compiler enforces those rules against the contract artifact, in three classes. Structural errors fail compilation. Coverage gaps score down without blocking. A waived rule is allowed when the waiver records the rule name, a rationale, a machine-checkable condition, and the approval.
 
