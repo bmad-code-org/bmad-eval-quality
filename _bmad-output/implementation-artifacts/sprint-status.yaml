@@ -141,8 +141,8 @@ development_status:
 
   epic-14: in-progress
   14-1-the-skill-tutorial-shows-its-result-first: done
-  14-2-the-readme-maps-the-seven-rules-to-a-prose-skill: backlog
-  14-3-the-story-records-of-finished-epics-leave-the-checkout: backlog
+  14-2-the-readme-maps-the-seven-rules-to-a-prose-skill: done
+  14-3-the-story-records-of-finished-epics-leave-the-checkout: review
   14-4-whether-the-shard-pro-script-runs-inside-the-eval-room: backlog
   14-5-a-planted-defect-caught-for-the-reason-it-was-planted: backlog
   14-6-tea-runs-on-the-new-eval-quality-release: backlog
