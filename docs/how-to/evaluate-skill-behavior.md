@@ -64,11 +64,12 @@ npm ci
 npm run build
 ```
 
-Every command below that takes `--out` writes into `/tmp/eval-quality-skill`, and that directory has to start empty.
-If an earlier run left it behind, delete it first with `rm -rf /tmp/eval-quality-skill`, so a step whose input no earlier step produced fails at once.
+Run every command below in one shell.
+The first one makes a fresh, private output directory, and every command after it that writes or reads an output uses that directory.
+Each run of the lab starts from a new empty directory, so a step whose input no earlier step produced fails at once.
 
 ```bash
-mkdir -p /tmp/eval-quality-skill
+OUT_DIR="$(mktemp -d)"
 ```
 
 ### 1. Run the skill and read its decision
@@ -117,7 +118,7 @@ It names every item in the index, including the three the rules mandate for a fr
 The contract is `corpus/dev/contracts/checklist-selection.json`, published in the package.
 
 ```bash
-node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out /tmp/eval-quality-skill/eval-contract.json
+node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out "$OUT_DIR/eval-contract.json"
 ```
 
 Exit `0`. The contract declares two behaviors over the frontend case, each with exactly one oracle:
@@ -135,7 +136,7 @@ node dist/cli/main.js preflight \
   --probes examples/tutorials/skill/probes.json \
   --observations examples/tutorials/skill/observations.json \
   --run-id skill-honest-1 \
-  --out /tmp/eval-quality-skill/honest-preflight-verdict.json
+  --out "$OUT_DIR/honest-preflight-verdict.json"
 ```
 
 ```bash
@@ -144,13 +145,13 @@ node dist/cli/main.js preflight \
   --probes examples/tutorials/skill/probes.json \
   --observations examples/tutorials/skill/observations.json \
   --run-id skill-degenerate-1 \
-  --out /tmp/eval-quality-skill/degenerate-preflight-verdict.json
+  --out "$OUT_DIR/degenerate-preflight-verdict.json"
 ```
 
 Both exit `0`, over four legs. The honest arm's verdict reads:
 
 ```bash
-node -e "const v=require('/tmp/eval-quality-skill/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
+node -e "const v=require('$OUT_DIR/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
 ```
 
 ```text
@@ -163,23 +164,44 @@ clean-control null null satisfied
 
 All four checks are satisfied, so the environment is fit to score.
 
-### 4. Score the honest reply
+### 4. Score both replies
+
+The honest record is scored with a clean-control probe:
 
 ```bash
 node dist/cli/main.js score \
   --record examples/tutorials/skill/honest-run-record.json \
-  --contract /tmp/eval-quality-skill/eval-contract.json \
+  --contract "$OUT_DIR/eval-contract.json" \
   --probe examples/tutorials/skill/honest-probe.json \
-  --preflight-verdict /tmp/eval-quality-skill/honest-preflight-verdict.json \
+  --preflight-verdict "$OUT_DIR/honest-preflight-verdict.json" \
   --policy examples/tutorials/skill/scoring-policy.json \
   --isolation-manifest examples/tutorials/skill/honest-isolation-manifest.json \
   --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
   --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
-  --out /tmp/eval-quality-skill/honest-evidence-artifact.json
+  --out "$OUT_DIR/honest-evidence-artifact.json"
 ```
 
+Same contract, same oracles, a different record and a `gameability` probe:
+
 ```bash
-node -e "const e=require('/tmp/eval-quality-skill/honest-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
+node dist/cli/main.js score \
+  --record examples/tutorials/skill/degenerate-run-record.json \
+  --contract "$OUT_DIR/eval-contract.json" \
+  --probe examples/tutorials/skill/degenerate-probe.json \
+  --preflight-verdict "$OUT_DIR/degenerate-preflight-verdict.json" \
+  --policy examples/tutorials/skill/scoring-policy.json \
+  --isolation-manifest examples/tutorials/skill/degenerate-isolation-manifest.json \
+  --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
+  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
+  --out "$OUT_DIR/degenerate-evidence-artifact.json"
+```
+
+Both exit `0`, and each writes one evidence artifact.
+
+### 5. Read the honest score
+
+```bash
+node -e "const e=require('$OUT_DIR/honest-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
 ```
 
 ```text
@@ -190,25 +212,10 @@ O-002 passed-clean-control held agrees
 
 Both oracles held. The clean-control probe contributes `null` to every strength component, and the artifact's `contractVerdict` field reads `CONCERNS`, with `exitCode` `0`.
 
-### 5. Score the degenerate reply
-
-Same contract, same oracles, a different record and a `gameability` probe:
+### 6. Read the degenerate score
 
 ```bash
-node dist/cli/main.js score \
-  --record examples/tutorials/skill/degenerate-run-record.json \
-  --contract /tmp/eval-quality-skill/eval-contract.json \
-  --probe examples/tutorials/skill/degenerate-probe.json \
-  --preflight-verdict /tmp/eval-quality-skill/degenerate-preflight-verdict.json \
-  --policy examples/tutorials/skill/scoring-policy.json \
-  --isolation-manifest examples/tutorials/skill/degenerate-isolation-manifest.json \
-  --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
-  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
-  --out /tmp/eval-quality-skill/degenerate-evidence-artifact.json
-```
-
-```bash
-node -e "const e=require('/tmp/eval-quality-skill/degenerate-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
+node -e "const e=require('$OUT_DIR/degenerate-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
 ```
 
 ```text
@@ -220,7 +227,7 @@ O-002 caught violated agrees
 The inclusion oracle held over a reply that named everything, and the exclusion oracle caught it.
 The artifact exists, so the gameability probe qualified: `score` rejects an unqualified probe at exit `3` and writes no artifact. Its `contractVerdict` still reads `CONCERNS`, with `exitCode` `0`.
 
-### 6. The lesson
+### 7. The lesson
 
 **Gameability means an easy or degenerate strategy can satisfy a weak evaluator.**
 A contract with O-001 alone would have reported this reply as correct, with its inclusion oracle holding.
@@ -493,7 +500,7 @@ TEA's eight contracts declare 48 behaviors and 48 oracles over 24 cases: the sam
 
 ### Gameability probes
 
-`probeClass: "gameability"` is the probe the lab scored in step 5, and its shape is worth knowing.
+`probeClass: "gameability"` is the probe the lab scored in step 4, and its shape is worth knowing.
 
 AD-9's gameability route qualifies a response, so the probe seeds no defect: `defects` is empty, and `admissibleRoutes` in `src/core/score/qualification.ts` admits the `gameability` route for that class and no other.
 The route's record carries three fields (`src/core/schemas/probe-qualification.ts`): `degenerateResponse`, which describes the reply in prose because AD-8 keeps sealed-case content out of every artifact, and `naiveOracleSatisfiedEvidence` and `disciplinedOracleRejectedEvidence`, the two artifact references showing it passed one oracle and failed the other.

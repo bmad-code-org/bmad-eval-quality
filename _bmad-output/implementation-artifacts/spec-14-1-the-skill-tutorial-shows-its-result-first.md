@@ -18,7 +18,7 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 
 ## Boundaries & Constraints
 
-**Always:** The opener (frontmatter, H1, intro, and "The core problem: lazy shortcuts" through "You will run the selector runner locally…") keeps its claims word for word. Commands stay in dependency order: setup, compile, honest preflight, degenerate preflight, preflight readback, honest score, honest readback, degenerate score, degenerate readback. The three `<!-- expect-exit: 0 -->` runner pairs keep one invocation per fence and their `text` block after it, with blank lines only between. Each `intro`-pinned sentence stays immediately before the example it introduces. The page says both arms come back `CONCERNS` at exit `0`.
+**Always:** The opener (frontmatter, H1, intro, and "The core problem: lazy shortcuts" through "You will run the selector runner locally…") keeps its claims word for word. Commands stay in the story's dependency order: setup, compile, honest preflight, degenerate preflight, preflight readback, honest score, degenerate score, honest readback, degenerate readback. The three `<!-- expect-exit: 0 -->` runner pairs keep one invocation per fence and their `text` block after it, with blank lines only between. Each `intro`-pinned sentence stays immediately before the example it introduces. The page says both arms come back `CONCERNS` at exit `0`.
 
 **Ask First:** Any change outside the page and `eval-quality.config.json`; any edit to a pinned sentence's wording.
 
@@ -39,7 +39,7 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 - `eval-quality.config.json:1047` -- `lists` entry, pins "`compile` accepts … and rejects a contract declaring" (line 14, opener, unchanged).
 - `eval-quality.config.json:1290,1301,1312` -- `intro` entries: "This interface parses against the published `EvalContract` schema", "The inclusion half says the run named everything the rules mandate:", "The exclusion half is what rejects it:". Each must stay directly above its fenced example.
 - `eval-quality.config.json:1570,1602` -- `text` entries, values from `scripts/doc-claim-sources.ts` (`skillDefectVector`, `skillCorpusDigest`); the strings must stay on the page.
-- `scripts/check-doc-invocations.mjs` -- replays bash fences in document order in a sandbox; `mkdir -p` and `--out` are rebased. Order is the dependency contract.
+- `scripts/check-doc-invocations.mjs` -- replays bash fences in document order in a sandbox; `mkdir -p` and `--out` are rebased, quotes are stripped, and a line naming no binary (such as `OUT_DIR="$(mktemp -d)"`) is skipped, so `"$OUT_DIR/…"` paths rebase consistently and stay faithful. Order is the dependency contract.
 - `.github/workflows/pr-checks.yml:1329` -- `canary-tutorials`; `.github/workflows/docs.yaml` -- docs build and link job (`npm run docs:build`, `npm run docs:validate-links`).
 
 ## Tasks & Acceptance
@@ -56,6 +56,10 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 - Given the page's bash fences run in order from a built checkout into a directory that did not exist before the run, when the evidence JSON that run wrote is read, then every command exits 0, every readback matches its transcript, and the rows of the result table hold.
 - Given the page, when inspected, then each `intro`-pinned sentence sits directly above its example, the three `expect-exit: 0` pairs keep one invocation and their `text` block with blank lines only between, and the page says both arms come back `CONCERNS`.
 
+## Spec Change Log
+
+- Codex round 1: the frozen order put the honest readback between the two scores, against the story's "both scores and both readbacks". Amended the Always order to the story's literal sequence, which the coordinator's story contract governs; the page now has "4. Score both replies", "5. Read the honest score", "6. Read the degenerate score" and "7. The lesson". Also replaced the fixed `/tmp/eval-quality-skill` path and its `rm -rf` advice with `OUT_DIR="$(mktemp -d)"`, so each run is fresh and private. KEEP: the opener byte-identical, the three runner pairs, the pinned intro sentences above their examples.
+
 ## Design Notes
 
 Anchors: demoting `##` to `###` keeps each reference heading's slug, and no other page links into this page by anchor. Two lab slugs change, because the content under them changed: `6. The lesson, in two rows` is now `6. The lesson` (its two-row block became the result table), and the `####` subheadings inside steps 3 to 5 moved to Advanced under new names. The page's own `[Advanced](#advanced)` link resolves against `## Advanced`; `docs:validate-links` does not check bare `#anchor` links (deferred). The result table states values the fresh run reads back: honest `O-001`/`O-002` `passed-clean-control held`; degenerate `O-001 confirmed held`, `O-002 caught violated`.
@@ -67,7 +71,7 @@ Anchors: demoting `##` to `###` keeps each reference heading's slug, and no othe
 - `npm run docs:build && npm run docs:validate-links` -- expected: exit 0.
 - Fresh-run script (scratchpad): extract the page's bash fences after `npm run build`, rewrite `/tmp/eval-quality-skill` to a new `mktemp -d`, run them in order, then read both evidence artifacts and assert the matrix rows -- expected: all assertions pass.
 
-**Evidence (fresh run, 2026-11-26, after the rebase onto `88cda5c`):** all 12 page commands exited 0 into a new `mktemp -d` directory, and all 6 transcripts matched. The evidence read back: honest `O-001` and `O-002` `passed-clean-control held`; degenerate `O-001 confirmed held`, `O-002 caught violated`; degenerate gameability `{"caught":1,"exercised":1,"rate":1}`; `contractVerdict` `CONCERNS`, `exitCode` `0` on both arms; `excludedProbeIds` empty on both. A copy of the degenerate probe with its selector key misspelled exits `3` from `score` and writes no artifact, so a written artifact means the probe qualified.
+**Evidence (fresh run, 2026-11-26, after Codex round 1):** the page's fences run in one bash shell, as a reader runs them, exited 0 into the directory the page's own `mktemp -d` made, and all 6 transcripts matched. A second run with the first run's output still on disk got its own new directory and reproduced the same values. With the compile fence dropped, the first `score` exits `64`, so a missing producer fails. `check:doc-invocations` still runs 56 invocations faithfully and compares 15 transcripts, the same as base. The evidence read back: honest `O-001` and `O-002` `passed-clean-control held`; degenerate `O-001 confirmed held`, `O-002 caught violated`; degenerate gameability `{"caught":1,"exercised":1,"rate":1}`; `contractVerdict` `CONCERNS`, `exitCode` `0` on both arms; `excludedProbeIds` empty on both. A copy of the degenerate probe with its selector key misspelled exits `3` from `score` and writes no artifact, so a written artifact means the probe qualified.
 
 **CHANGELOG:** no entry. The page is not a package member, and the epic ties its one `[Unreleased]` entry to Story 14.2's README sentence.
 
@@ -83,22 +87,25 @@ Anchors: demoting `##` to `###` keeps each reference heading's slug, and no othe
 
 **Executable path**
 
-- Empty output directory, so a missing producer fails at once.
-  [`evaluate-skill-behavior.md:68`](../../docs/how-to/evaluate-skill-behavior.md#L68)
+- A private `mktemp -d` output directory per run, so a missing producer fails at once.
+  [`evaluate-skill-behavior.md:72`](../../docs/how-to/evaluate-skill-behavior.md#L72)
+
+- Both scores run before either readback, the story's order.
+  [`evaluate-skill-behavior.md:167`](../../docs/how-to/evaluate-skill-behavior.md#L167)
 
 - Oracle meanings kept where the contract is compiled.
-  [`evaluate-skill-behavior.md:115`](../../docs/how-to/evaluate-skill-behavior.md#L115)
+  [`evaluate-skill-behavior.md:116`](../../docs/how-to/evaluate-skill-behavior.md#L116)
 
 - Qualification read from the artifact's existence; `contractVerdict` named.
-  [`evaluate-skill-behavior.md:221`](../../docs/how-to/evaluate-skill-behavior.md#L221)
+  [`evaluate-skill-behavior.md:228`](../../docs/how-to/evaluate-skill-behavior.md#L228)
 
 **Advanced**
 
 - One heading holds the stage internals, then the author reference.
-  [`evaluate-skill-behavior.md:245`](../../docs/how-to/evaluate-skill-behavior.md#L245)
+  [`evaluate-skill-behavior.md:252`](../../docs/how-to/evaluate-skill-behavior.md#L252)
 
 - AD-40 pairing paragraph, moved verbatim with its antecedent made explicit.
-  [`evaluate-skill-behavior.md:324`](../../docs/how-to/evaluate-skill-behavior.md#L324)
+  [`evaluate-skill-behavior.md:331`](../../docs/how-to/evaluate-skill-behavior.md#L331)
 
 - Scope boundary now closes "What you are evaluating".
-  [`evaluate-skill-behavior.md:350`](../../docs/how-to/evaluate-skill-behavior.md#L350)
+  [`evaluate-skill-behavior.md:357`](../../docs/how-to/evaluate-skill-behavior.md#L357)
