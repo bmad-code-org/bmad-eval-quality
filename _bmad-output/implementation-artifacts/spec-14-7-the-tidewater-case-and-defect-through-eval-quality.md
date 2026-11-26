@@ -74,7 +74,7 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 
 The contract scores what the run left, as Story 14.5's grader did. Its one operation is `read-output`, a collector command that takes a graded folder and prints the reply, the entry file's first 200 lines, the frozen source copy and every manifest-listed shard body. The agent run stays outside the contract: its one case prompt gives pre-flight no second input to show sensitivity with, and two different workspaces do.
 
-The records' evaluator dispositions are Story 14.5's grades, transcribed: rubric line n to oracle `O-00n`, line 5 from the five-line regrade, `not-attempted` where no grade exists. That puts the grader's verdict and the engine's check in one artifact, and `corroboration` marks where they differ. The engine's `checkResolution` never reads a disposition; every `caught`, `missed` and `false-positive` does.
+The records' evaluator dispositions are Story 14.5's grades, transcribed: rubric line n to oracle `O-00n`, line 5 from the five-line regrade, `not-attempted` where no grade exists. That puts the grader's verdict and the engine's check in one artifact, and `corroboration` marks where they differ. The engine's `checkResolution` never reads a disposition; every `caught`, `missed` and `false-positive` does. The records are synthetic: the builder turns each failed grade into a defect finding with a quote it chose, and attests the isolation manifest's values itself. So the probe states measure how `score` responds to Story 14.5's grade booleans in this shape, and only `checkResolution` is a reading of the outputs.
 
 ## Evidence
 
@@ -101,9 +101,9 @@ node <tools>/build.mjs <repo> <evidence-dir>
 
 | File | SHA-256 |
 |---|---|
-| `<tools>/collect.py` | `cd46cb9c6a118575c6bc76255e74dd618dc75529e994697a32142440ace2c99b` |
+| `<tools>/collect.py` | `8f33e06696df990d67f8a0e92b46f37bd670321b93a3138d800da7d2d4de1823` |
 | `<tools>/contract.mjs` | `35039bce4a7b86a7cf2a0631bf2e72b0db15e2e94307d51bfd096177b05c94ff` |
-| `<tools>/build.mjs` | `d728c82a8174f562dee834324e31d102b9bd2d4cf3cc9aca4f8dad9a116002a1` |
+| `<tools>/build.mjs` | `2db684631af5935c911836830d27ce70d661ccdbff054d89733eb2f712cb4b47` |
 | `<work>/contract.json` | `3f06c45b085e5e23cc003cab958efcda64e7e659b2c062a0041a5bb411652891` |
 | `<work>/eval-contract.json` | `4655b0b37e77cbc130e43124bdf8a450486ccf299ff2fdd4ce7f936bba1d181d`; `contractDigest` `sha256:f51337b5cbcb6aecb7d06ea06732e1fae016ae51da58eb25ba2513b12806a982` |
 | `<work>/preflight-verdict.json` | `fa684b8f2c3ddbb0d1bbaf322a4bf73c1ffc18b39e92e628bf5b5198094add1a` |
@@ -112,33 +112,33 @@ node <tools>/build.mjs <repo> <evidence-dir>
 
 | Oracle | Rubric line | Check |
 |---|---|---|
-| `O-001` | 1, as written | for each sampled passage, `any` of: the source copy contains it, some shard body contains it. Samples: FR-WO-015 (`<fx>:2531-2552`), NFR-RET-004 (`:8761-8768`), the Appendix A FR-WO rows (`:9898-9932`), section 5.3 (`:565-596`) |
+| `O-001` | 1, sampled approximation | for each sampled passage, `any` of: the source copy contains it, some shard body contains it. Samples: FR-WO-015 (`<fx>:2531-2552`), NFR-RET-004 (`:8761-8768`), the Appendix A FR-WO rows (`:9898-9932`), section 5.3 (`:565-596`) |
 | `O-002` | 2, lexical half | the entry head matches `FR-WO-0(?:0\d\|1[0-5])[^\n]*\bto (?:FR-WO-)?0(?:1[5-9]\|[2-9]\d)\b` (a work-order range that covers 015) and contains "Appendix A" or "raceability" |
 | `O-003` | 3, lexical half, reply only | the reply contains `$27` and `$29` and matches `\b18\b` and `\b25 months\b` |
 | `O-004` | 4, read as a slice test | `for-all` shards: the source copy contains the shard body, so each body is one unbroken verbatim slice |
 | `O-005` | 5, Story 14.5's addition | `for-any` shards: the body contains the full FR-WO-015 passage |
 | `O-006` | none | the source copy equals the fixture, which `O-004` rests on |
 
-Three of these encodings are narrower or stricter than their rubric line. `O-003` reads the reply only, while line 3 also accepts "a conflicts list in the output": no output holds a separate conflicts file, and a lexical search of the whole output would be satisfied by the source copy, which states every value. Its `\b18\b` conjunct accepts any standalone 18 in the reply. `O-004` tests "matches the source verbatim" as an unbroken slice, so it fails an omission or an addition inside a shard as well as a rewording; line 4 names rewording only.
+Four of these encodings are narrower or stricter than their rubric line. `O-001` keeps line 1's weak branch, "the original kept intact somewhere", as "the source copy contains each sample", and replaces its other branch, "files whose contents together contain every original line", with "one shard holds each sample whole": a sample split across two shards fails that branch though the files together hold it, which is why Appendix A is sampled by its FR-WO rows only. And three-valued `any` makes an empty shard list undecidable even beside an intact source copy (step 3), where line 1 would pass. `O-003` reads the reply only, while line 3 also accepts "a conflicts list in the output": no output holds a separate conflicts file, and a lexical search of the whole output would be satisfied by the source copy, which states every value. Its `\b18\b` conjunct accepts any standalone 18 in the reply. `O-004` tests "matches the source verbatim" as an unbroken slice, so it fails an omission or an addition inside a shard as well as a rewording; line 4 names rewording only.
 
 The rubric `R-001` holds the two judgements no operator decides: `RC-001`, whether a reader of the first 200 lines can locate FR-WO-015 and Appendix A, and `RC-002`, whether the reply asserts only one value of a conflict.
 
 **2. What the contract and the records had to declare.**
 
 - One `cli` interface `shard-pro-output` with one operation `read-output`: executable `collect-output`, one required argument `workspace`, no option, environment or stdin key, `artifacts: []`, `stateChangeMarker: false`, stdout as its descriptor channel, four required keys (`reply`, `entryHead`, `sourceCopy`, `shards`), `/shards` a collection of at most 400, and a sensitivity witness whose two legs read two different clean outputs and must not return equal shard lists.
-- The collector itself, 48 lines. It does no judging and three pieces of selection: it keeps only the shards the manifest lists, strips each shard's frontmatter and the one blank line after it, and cuts the entry file at 200 lines.
+- The collector itself, 54 lines. It reads every file as strict UTF-8 with no newline translation, so equal text means equal bytes; a copy of `g01` whose source copy was rewritten with CRLF line ends now fails `O-006`. It does no judging and three pieces of selection: it keeps only the shards the manifest lists, strips each shard's frontmatter and the one blank line after it, and cuts the entry file at 200 lines.
 - One plan step `output` binding `workspace` to `{ "matcher": "any" }`, so every graded folder matches it.
 - Severity `material` on all six behaviors, the level the scoring policy's floor reads, and budgets copied from the tutorial (`maxCostUsd` "1.00", `maxToolCalls` 20, `maxWallClockMinutes` 5), which no run here comes near.
 - A rubric that compiles only with anchored scale levels, a bounded length and named failure-mode penalties (`rubric-unanchored` three times), and a forbidden-input list that keeps `original-spec` (`forbidden-input-floor-incomplete`). Those four refusals came before the first exit 0.
 - Six probes: a clean control on `B-005`; two defect probes for the planted deletion (signature: the source copy holds the FR-WO-015 Statement line `<fx>:2533` and no listed shard does), on `B-005` and `B-001`, each with its own manifestation leg; three gameability probes for the degenerate outputs, on `B-005` and `B-001`. The gameability signature for an empty shard list uses `absence` of `/shards/0`: a quantifier over the empty list made the first version `vacuous`, and `score` exited 3 with `oracle O-005 resolved infrastructure-error`. Two defect probes sharing one leg id were refused by `preflight` (`malformed-operator-expression`), and a leg id must be lowercase.
 - Six pre-flight observations: `witness-clean-1` (`g01`), `witness-clean-2` (`g02`), `g01` read twice for the two control legs, and `g04` once for each defect probe's manifestation leg.
-- Per record: an evaluator configuration, an isolation manifest, an actions file and the evaluator dispositions and findings transcribed from Story 14.5's grades. A record is about 1.77 MB, nearly all of it the collector's output.
+- Per record: an evaluator configuration, an isolation manifest, an actions file and the evaluator dispositions and findings derived from Story 14.5's grade booleans. The builder wrote every finding, citation and attestation. A failed grade becomes a defect finding citing the one observation and quoting text that observation holds: for `g03`, the reply's own sentence "Prices, availability targets, SOC 2 dates and the 72-hour offline window agree across the document."; for `g04`, the heading "#### FR-WO-015 — Create work orders from fault events", since an omission has no text to quote. The collector read is marked `evaluator-chosen`, which the schema gives to "a deterministic interaction plan that is the evaluation's own action" (`sealed-run-record.ts:252`). A record is about 1.77 MB, nearly all of it the collector's output.
 
-**3. Before any run: no.** `compile --strict` exits 0 and prints nothing. `preflight`, given all six probes, passes all eight of its checks: `interface-present`, `input-sensitivity`, `state-reset`, `clean-control`, and `seeded-faults-scoped` and `seeded-fault-fired` for each defect probe. Neither stage looks at what an oracle accepts. Compile checks structure and the discipline rules. Pre-flight checks that the environment is measurable and that each seeded fault fires; a gameability probe adds no pre-flight check. The weak acceptance shows only when a degenerate output is scored, and that output has to be built by hand. Building it needs no model call, but someone has to think of it first.
+**3. Before any run: no.** `compile --strict` exits 0 and prints nothing. `preflight`, given all six probes, passes all eight of its checks: `interface-present`, `input-sensitivity`, `state-reset`, `clean-control`, and `seeded-faults-scoped` and `seeded-fault-fired` for each defect probe. Neither stage looks at what an oracle accepts. Compile checks structure and the discipline rules. Pre-flight checks that the environment is measurable and that each seeded fault fires; a gameability probe adds no pre-flight check. The weak acceptance shows only when a degenerate output is scored, and that output has to be built by hand. The gameability probes do not change that: they qualify at `score` on their declared prose and evidence, and nothing tests the naive-holds and disciplined-fails pair they claim. For the title stub the pair is real (`O-001` true, `O-005` false). For the empty list it is not, since both checks resolve `insufficient-evidence`, so `P-006` is an abstention diagnostic and its rate belongs in no comparison. Building it needs no model call, but someone has to think of it first.
 
-On the two degenerate outputs the checks answer differently. With no shard at all, `O-001` resolves `insufficient-evidence`, because eval-quality's three-valued `any` (`resolution.ts:192-200`) lets no `true` sibling rescue a quantifier over an empty list, so the source copy alone cannot satisfy it. With one title-line stub shard, `O-001`, `O-004` and `O-006` all hold; only `O-005` and the `O-002` proxy fail it. The FAIL verdicts on both degenerate runs come from the absent evaluator (step 5), apart from `O-004` and `O-005` abstaining on the empty one.
+On the two degenerate outputs the checks answer differently. With no shard at all, `O-001` resolves `insufficient-evidence`, because eval-quality's three-valued `any` (`resolution.ts:192-200`) lets no `true` sibling rescue a quantifier over an empty list, so the source copy alone cannot satisfy it. With one title-line stub shard, `O-001`, `O-004` and `O-006` all hold; only `O-005` and the `O-002` proxy fail it. The FAIL verdicts on both degenerate runs come from records with no finding (step 5), apart from `O-004` and `O-005` abstaining on the empty one.
 
-**4. The checks, per folder.** `checkResolution` from each evidence artifact, computed by the engine with no model call. The 14.5 column is the blind grader's verdict on lines 1 to 5, from `g01`-`g04` and the regrades `g05`, `g10`, `g11`, `g06`.
+**4. The checks, per folder.** `checkResolution` from each evidence artifact, computed by the engine with no model call over the collected text. A `true` means the oracle's predicate held on that text; it is not a score verdict, which step 5 reports separately. The 14.5 column is the blind grader's verdict on lines 1 to 5, from `g01`-`g04` and the regrades `g05`, `g10`, `g11`, `g06`.
 
 | Folder | `O-001` | `O-002` | `O-003` | `O-004` | `O-005` | `O-006` | Story 14.5 grader, lines 1-5 |
 |---|---|---|---|---|---|---|---|
@@ -149,7 +149,7 @@ On the two degenerate outputs the checks answer differently. With no shard at al
 | degenerate, title stub | true | false | true | true | false | true | not graded |
 | degenerate, no shard | insufficient | false | true | insufficient | insufficient | true | not graded |
 
-So `g01` and `g02` pass all six checks. `g03` fails `O-003`, because its reply never names $27 or $29: the clean miss Story 14.5's grader also failed it for, found here by the narrower reply-only test. `g04` passes `O-001`, the rubric's line 1 as written, and fails two checks. `O-005` fails because no listed shard holds the whole FR-WO-015 passage. `O-004` fails because the shard `work-orders-fr-wo-007-017.md` is no longer one unbroken slice of the source. That second catch comes from reading line 4 as a slice test. The grader read it as a rewording test and passed `g04` ("The one defect is an omission, not a rewording"), and `corroboration` reads `disagrees` on `O-004` in every `g04` artifact. The grader's reading matches line 4's words. The slice reading is the encoding's own choice, made once and applied to bytes. `g04` differs from `g01` in one shard line and in one deleted reply bullet, Story 14.5's own self-check claim, which bears on no oracle here.
+So `g01` and `g02` pass all six checks. `g03` fails `O-003`, because its reply never names $27 or $29: the clean miss Story 14.5's grader also failed it for, found here by the narrower reply-only test. `g04` passes `O-001`, the sampled line 1 check, and fails two checks. The four-line grader saw the loss too: its line 1 evidence says the shard set alone is not complete, its line 4 evidence names the omission, and it passed both lines because their wording allows it. `O-005` fails because no listed shard holds the whole FR-WO-015 passage. `O-004` fails because the shard `work-orders-fr-wo-007-017.md` is no longer one unbroken slice of the source. That second catch comes from reading line 4 as a slice test. The grader read it as a rewording test and passed `g04` ("The one defect is an omission, not a rewording"), and `corroboration` reads `disagrees` on `O-004` in every `g04` artifact. The grader's reading matches line 4's words. The slice reading is the encoding's own choice, made once and applied to bytes. `g04` differs from `g01` in one shard line and in one deleted reply bullet, Story 14.5's own self-check claim, which bears on no oracle here.
 
 No check above needs a judge to reach its result. Two rubric judgements stay undecided. `RC-001` stays open because `O-002` only finds a range written as "X to Y"; a map that wrote "FR-WO-013–020" would fail it while still letting a reader locate the requirement. `RC-002` stays open because naming both values does not settle it: a reply could name $27 and $29 and still assert $29 as the price. The records carry no judge results, and `score.ts:260-278` reads a rubric only for judge conduct, so a judge's score could not move any oracle or the verdict anyway.
 
@@ -159,15 +159,15 @@ No check above needs a judge to reach its result. Two rubric judgements stay und
 |---|---|---|---|---|
 | `clean-1` | `g01`, clean control `P-001`, 14.5 grades | 0 | CONCERNS | all six oracles `passed-clean-control`; basis: coverage gaps `whole-body`, `malformed-input`, `sibling-cross-check`, and 1 trial below 3 |
 | `clean-2` | `g02`, `P-001`, 14.5 grades | 0 | CONCERNS | the same |
-| `clean-3` | `g03`, `P-001`, 14.5 grades | 2 | FAIL | `oracle O-003 resolved false-positive`: the grader's line 3 finding against an output declared clean. The engine's `O-003` check agrees the reply misses the conflict |
-| `poisoned-line1-rubric4` | `g04`, defect `P-003` on `B-001`, the four-line grade | 2 | FAIL | `oracle O-001 resolved missed`; `defect {caught 0, exercised 1, rate 0}`: the evaluator that graded the four lines found nothing |
+| `clean-3` | `g03`, `P-001`, 14.5 grades | 2 | FAIL | diagnostic only: `g03` really misses the price conflict, so declaring it a clean control for all six oracles is wrong, and `oracle O-003 resolved false-positive` is no false alarm. The engine's `O-003` check agrees the reply misses the conflict |
+| `poisoned-line1-rubric4` | `g04`, defect `P-003` on `B-001`, the four-line grade | 2 | FAIL | `oracle O-001 resolved missed`; `defect {caught 0, exercised 1, rate 0}`: no line failed, so the record holds no defect finding, though the grader's evidence names the omission |
 | `poisoned-line5-rubric5` | `g04`, defect `P-002` on `B-005`, with the line 5 regrade | 0 | CONCERNS | `O-005` `caught`, `defect {caught 1, exercised 1, rate 1}` |
 | `poisoned-line1-rubric5` | `g04`, `P-003` on `B-001`, with the line 5 regrade | 0 | CONCERNS | `O-001` `caught` and `defect` rate 1, from the finding against `O-005`; see step 8 |
-| `degenerate-stub-line5` | stub, gameability `P-004` on `B-005`, no evaluator | 2 | FAIL | `oracle O-005 resolved missed`; `gameability` rate 0 |
-| `degenerate-stub-line1` | stub, gameability `P-005` on `B-001`, no evaluator | 2 | FAIL | `oracle O-001 resolved missed`; `gameability` rate 0 |
-| `degenerate-empty-line1` | no shard, gameability `P-006` on `B-001`, no evaluator | 2 | FAIL | `O-001` missed; `O-004` and `O-005` abstained |
+| `degenerate-stub-line5` | stub, gameability `P-004` on `B-005`, no finding | 2 | FAIL | `oracle O-005 resolved missed`; `gameability` rate 0 |
+| `degenerate-stub-line1` | stub, gameability `P-005` on `B-001`, no finding | 2 | FAIL | `oracle O-001 resolved missed`; `gameability` rate 0 |
+| `degenerate-empty-line1` | no shard, gameability `P-006` on `B-001`, no finding | 2 | FAIL | `O-001` missed; `O-004` and `O-005` abstained |
 
-A catch in eval-quality is the evaluator's. `caught` needs a defect finding that cites an observation the probe's signature matches (`outcome.ts:492`, AD-40), so every `caught`, `missed` and `false-positive` above comes from Story 14.5's transcribed grades, or from their absence. With no evaluator the degenerate runs score `missed` whatever the oracles say, and the oracle-level answer for them is step 4's table. With the four-line grade, `g04` scores `missed`, the same miss Story 14.5 reported. With the line 5 regrade, it scores `caught`.
+A catch in eval-quality is the evaluator's. `caught` needs a defect finding that cites an observation the probe's signature matches (`outcome.ts:492`, AD-40), so every `caught`, `missed` and `false-positive` above comes from findings the builder derived from Story 14.5's grades, or from their absence. With no finding the degenerate runs score `missed` whatever the oracles say, and the oracle-level answer for them is step 4's table. The states also follow the record's provenance: Codex's review replay, repeated here, marked the stub's collector read `baseline` and left everything else alone, and `degenerate-stub-line1` became `not-applicable`, 0 exercised, CONCERNS, with `O-001` still `true`. With the four-line grade, `g04` scores `missed`, the same miss Story 14.5 reported. With the line 5 regrade, it scores `caught`.
 
 **Model calls.** This story made none. The collector reads files, and compile, seal, pre-flight and score are deterministic, so every `checkResolution` in step 4 is model-free. The probe states in step 5 are not: they rest on Story 14.5's eight grader runs (`g01`-`g06`, `g10`, `g11`), already counted in that story's budget. The graded outputs come from that story's three clean agent runs.
 
@@ -175,25 +175,25 @@ A catch in eval-quality is the evaluator's. `caught` needs a defect finding that
 
 | | Toolsmith `bmad-eval`, Story 14.5 | eval-quality, this story |
 |---|---|---|
-| Poisoned copy, line 1 as written | passes | `O-001` passes |
+| Poisoned copy, line 1 | passes; the grader's evidence notes the shards alone are incomplete | `O-001`, the sampled approximation, passes |
 | Poisoned copy, line 4 | passes, read as a rewording test | `O-004` fails, because the encoding reads line 4 as a slice test |
 | Poisoned copy, the FR-WO-015 line | fails line 5; three clean outputs pass it | `O-005` fails; three clean outputs pass it |
 | Clean output 3's price-conflict miss | line 3 fails | `O-003`, a reply-only lexical test, fails |
 | Weak "kept intact somewhere" before any run | not examined | not flagged by compile or pre-flight; a hand-built title-stub output passes `O-001` |
 | Judgement ("lets a reader locate", "without asserting only one value") | the grader judges it | lexical proxies, plus rubric text that reaches no verdict |
-| Model calls | 8 grader runs for these grades | 0 for the checks; the catch and miss states reuse those 8 grades |
-| Grading harness written for the comparison | `assemble.py`, `grade.py` and `poison.py`, 240 lines, plus `validity2.py` (255 lines) for the agent runs | `collect.py`, `contract.mjs` and `build.mjs`, 710 lines, with no grader to write |
+| Model calls | 8 grader runs for these grades | 0 for the checks; the catch and miss states replay synthetic records built from those 8 grades |
+| Grading harness written for the comparison | `assemble.py`, `grade.py` and `poison.py`, 240 lines, plus `validity2.py` (255 lines) for the agent runs | `collect.py`, `contract.mjs` and `build.mjs`, 720 lines, with no grader to write |
 | Case authoring | the case entry and its four rubric sentences already existed upstream; Story 14.5 wrote one more sentence | a contract with 6 oracles and the fixture inlined, through four compile refusals and two pre-flight refusals |
-| What a pass means | the grader read the output and agreed with each sentence | each check held on the bytes; a catch also needs an evaluator finding the probe's signature confirms |
+| What a pass means | the grader read the output and agreed with each sentence | a check's predicate held on the collected text; a score verdict also weighs the findings, the probe and the policy, so a run with two false checks can still read CONCERNS |
 
 **7. What eval-quality could not express, or expressed only through the harness.**
 
-- A decision that lives only in written files. `qualifyProbe` refuses an `artifact` pointer in a signature (`evaluate-skill-behavior.md:371`), so the output had to reach stdout through a collector command.
+- A probe signature over written files. `qualifyProbe` refuses an `artifact` pointer in a signature (`evaluate-skill-behavior.md:371`), so this contract put the output on stdout through a collector command. Oracles alone could have read declared artifacts.
 - A file set whose names change per run. Artifact identifiers are fixed per contract, so the collector bundles the manifest-listed shards into one array and does the join with the manifest itself.
 - "Within the first 200 lines". The bounded regex faults on nested quantifiers (`expression.ts:116`), so a line-counting pattern is out and the collector cuts the head.
-- "Files whose contents together contain every original line". That needs one operand per source line (11,039 lines), so `O-001` uses the rubric's own four samples.
+- "Files whose contents together contain every original line". This collector emits no line list, so `O-001` uses the rubric's own four samples. Codex's review showed the shape that would check every line: a collector that also emits the source as a line array and the shard bodies joined, and one `for-all` over the lines with a `containment` against the joined text, which held on `g01` and failed on `g04` with the shipped resolver.
 - "A conflicts list in the output". Without a declared conflicts file, a search of the whole output is satisfied by the source copy, so `O-003` reads the reply only.
-- A literal as container. `containment` takes a pointer container (`operators.ts:139-167`), so comparing the source copy with the fixture costs an 852,668-byte `equality` literal in the contract.
+- A reference with no channel. The operation's descriptor supplies no independent copy of the fixture, and `containment` takes a pointer container (`operators.ts:139-167`), so this comparison inlined the fixture as an 852,668-byte `equality` literal.
 - Pre-flight's input sensitivity for the agent run. The case has one prompt, so the witness compares two workspaces through the collector and the agent run stays outside the contract.
 - The two judgements in step 4, which no operator decides and no rubric score can move.
 
@@ -219,6 +219,16 @@ bmad-build review, quick lens, pass 1: 13 findings (medium 7, low 5, false 1). A
 - medium: the owner draft used internal references and long sentences. Rewritten.
 - low: two contract sizes, the unrecorded verification result, the incomplete declaration list, the planning text that did not yet name 14.7 (intro, definition of done, order, context dependencies, and `g04`'s reply bullet), and two ranges for one passage.
 
+Codex round 1 (changes requested, 7). All seven patched.
+
+- The record said the four-line grader found nothing; its line 1 and line 4 evidence names the omission. Steps 4 and 5, the table and the draft credit it.
+- The records' findings, quotes and attestations are the builder's. Design Notes and step 2 say so, the quotes are now text the cited observation holds (checked by the builder), and step 5 reports the provenance replay.
+- A true check was read as a pass, and `g03` as a clean control. Step 4 separates checks from verdicts, and the `clean-3` run is marked diagnostic.
+- `O-001` was called line 1 as written. It is the sampled approximation, with both branches' limits in step 1.
+- The three gameability probes shared one description and one evidence file. The stub probes now cite their own `O-001` and `O-005` results, and `P-006` is an abstention diagnostic.
+- The collector decoded newlines, so "byte-level" overstated `O-006`. It now reads strict UTF-8 with no newline translation, and a CRLF copy fails `O-006`; the draft says exact text.
+- Step 7 overstated three limits. It now names the full-line shape, keeps the signature-only file restriction, and books the fixture literal as this comparison's choice.
+
 ## Verification
 
 **Commands:**
@@ -236,4 +246,4 @@ Result at the final edit: `npm run validate` exited 0 (157 test files, 5,466 tes
 
 Draft for the owner's note; this story sends nothing.
 
-We also ran the same Tidewater case and the same poisoned copy through eval-quality, scoring the outputs we had already graded, with no new model call. Written as eval-quality checks, rubric line 1 still passes the poisoned copy, and nothing flags its "kept intact somewhere" clause before a run. The poisoned copy fails two byte-level checks, the full FR-WO-015 passage in one listed shard and line 4 read strictly as "each shard is an unbroken slice of the source", and the three clean outputs pass both. eval-quality's catch-or-miss verdicts still come from an evaluator's findings, here your grader's, and the judgement calls in lines 2 and 3 stay rubric text that no check decides.
+We also ran the same Tidewater case and the same poisoned copy through eval-quality, scoring the outputs your grader had already graded with no new model call, and a sampled version of rubric line 1 still passes the poisoned copy with nothing flagging its "kept intact somewhere" clause before a run. The poisoned copy fails two exact-text checks, the full FR-WO-015 passage in one listed shard and line 4 read strictly as "each shard is an unbroken slice of the source", and the three clean outputs pass both. Your grader noticed that loss too, and its lines 1 and 4 let it pass. eval-quality's catch-or-miss verdicts still come from an evaluator's findings, here built from your grader's pass and fail marks, and the judgement calls in lines 2 and 3 stay rubric text that no check decides.
