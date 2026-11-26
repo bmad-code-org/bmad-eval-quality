@@ -77,44 +77,70 @@ Recorded 2026-11-26 with uv 0.11.32, which ran both scripts on CPython 3.15.0, a
 
 **Citations re-read at `fc034b67`.** Every Code Map line above was read in the export. `shard_tool.py:1216-1227` and `:2-5` hold what the story cites; nothing moved.
 
-**1. Preflight with the original cases file.**
+**1. Preflight with the original cases file.** Run the blocks below in order in one `bash` session. `set -e` stops the session at the first failed check, and each expected nonzero exit is captured with `|| rc=$?`, so the session continues past it.
 
 ```bash
 set -euo pipefail
-mkdir -p <scratch>/bm <scratch>/root <scratch>/runs-a <scratch>/runs-b
+mkdir <scratch>/bm <scratch>/root
 git -C <bmad-method> archive fc034b67 | tar -x -C <scratch>/bm
-uv run <scratch>/bm/skills/toolsmith/bmad-eval/scripts/run_evals.py \
-  --cases <scratch>/bm/evals/core-tools/bmad-shard-pro/cases.json \
-  --skill-path <scratch>/bm/skills/core-tools/bmad-shard-pro \
-  --output-dir <scratch>/runs-a --project-root <scratch>/root --case-ids tidewater-prd
+test -z "$(ls -A <scratch>/root)"
+preflight() {  # $1: cases file, $2: output folder
+  local rc=0
+  uv run <scratch>/bm/skills/toolsmith/bmad-eval/scripts/run_evals.py \
+    --cases "$1" --skill-path <scratch>/bm/skills/core-tools/bmad-shard-pro \
+    --output-dir "$2" --project-root <scratch>/root \
+    --case-ids tidewater-prd > "$2.json" || rc=$?
+  test "$rc" -eq 3
+  python3 -c '
+import json, sys
+s = json.load(open(sys.argv[1]))
+assert (s["total"], s["executed"], s["skipped"], s["failures"]) == (1, 0, 1, 0), s
+assert [(r["case_id"], r["status"]) for r in s["results"]] == [("tidewater-prd", "skipped")], s
+' "$2.json"
+  test -z "$(ls -A <scratch>/root)"
+}
+preflight <scratch>/bm/evals/core-tools/bmad-shard-pro/cases.json <scratch>/runs-a
+ws_a=$(echo <scratch>/runs-a/*/skill/tidewater-prd/cwd)
+(cd "$ws_a" && find . -path ./.agents -prune -o -type f -print)
 ```
 
-Exit 3. Stderr: `[run_evals] no harness (BMad is not set up in this project; pass --harness); staging cases only`, then `[skipped] skill/tidewater-prd`. Summary: `"total": 1`, `"executed": 0`, `"skipped": 1`, `"failures": 0`. Outside `.agents/skills/bmad-shard-pro/`, the workspace `<scratch>/runs-a/<run-id>/skill/tidewater-prd/cwd` holds one file, `tidewater-prd.md`, and no `_bmad/`. `<scratch>/root` was still empty after the run.
+`run_evals.py` exits 3. Stderr: `[run_evals] no harness (BMad is not set up in this project; pass --harness); staging cases only`, then `[skipped] skill/tidewater-prd`. The summary holds `"total": 1`, `"executed": 0`, `"skipped": 1`, `"failures": 0` and one result, `tidewater-prd` with status `skipped`. The project root holds no `_bmad/`, so no customization resolver exists, and it is still empty after the run. Outside `.agents/skills/bmad-shard-pro/`, the workspace holds one file, `./tidewater-prd.md`. A `--case-ids` value that matches no case gives `"total": 0` and also exits 3, which the summary check rejects.
 
 **2. `outline` in that workspace.**
 
 ```bash
-cd <scratch>/runs-a/<run-id>/skill/tidewater-prd/cwd
-uv run .agents/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . outline tidewater-prd.md
+rc=0
+(cd "$ws_a" && uv run .agents/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . \
+  outline tidewater-prd.md) > <scratch>/outline-a.json 2> <scratch>/outline-a.err || rc=$?
+test "$rc" -eq 2
+test ! -s <scratch>/outline-a.json
+grep -F 'error: _bmad/scripts/frontmatter.py is missing. Run bmad setup for this project.' <scratch>/outline-a.err
 ```
 
-Exit 2, empty stdout. Stderr: `error: _bmad/scripts/frontmatter.py is missing. Run bmad setup for this project.` This reproduces the story's observation. Because the check at `shard_tool.py:1217-1220` runs before the subcommand table at line 1226, every subcommand of the staged script exits the same way; only `outline` was run.
+Exit 2, empty stdout, and stderr holds `error: _bmad/scripts/frontmatter.py is missing. Run bmad setup for this project.` This reproduces the story's observation. Because the check at `shard_tool.py:1217-1220` runs before the subcommand table at line 1226, every subcommand of the staged script exits the same way; only `outline` was run.
 
 **3. The overlay.**
 
 ```bash
-set -euo pipefail
-test ! -e <evidence-dir>/14-4-overlay
-mkdir -p <evidence-dir>/14-4-overlay/_bmad/scripts
-cp <scratch>/bm/skills/core-tools/bmad/scripts/frontmatter.py <evidence-dir>/14-4-overlay/_bmad/scripts/frontmatter.py
+ov=<evidence-dir>/14-4-overlay
+test ! -e "$ov"
+mkdir -p "$ov/_bmad/scripts"
+cp <scratch>/bm/skills/core-tools/bmad/scripts/frontmatter.py "$ov/_bmad/scripts/frontmatter.py"
 PYTHONIOENCODING=utf-8 python3 -c '
 import json, sys
 d = json.load(open(sys.argv[1], encoding="utf-8"))
 [c] = [c for c in d["cases"] if c["id"] == "tidewater-prd"]
 c["files"].append("_bmad/scripts/frontmatter.py")
-sys.stdout.write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")' \
-  <scratch>/bm/evals/core-tools/bmad-shard-pro/cases.json > <evidence-dir>/14-4-overlay/cases.json.tmp
-mv <evidence-dir>/14-4-overlay/cases.json.tmp <evidence-dir>/14-4-overlay/cases.json
+sys.stdout.write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+' <scratch>/bm/evals/core-tools/bmad-shard-pro/cases.json > "$ov/cases.json.tmp"
+mv "$ov/cases.json.tmp" "$ov/cases.json"
+(cd "$ov" && find . -type f | LC_ALL=C sort && shasum -a 256 cases.json _bmad/scripts/frontmatter.py)
+python3 -c '
+import json, sys
+a, b = (json.load(open(p, encoding="utf-8")) for p in sys.argv[1:])
+[c] = [c for c in b["cases"] if c["id"] == "tidewater-prd"]
+assert c["files"].pop() == "_bmad/scripts/frontmatter.py" and a == b
+' <scratch>/bm/evals/core-tools/bmad-shard-pro/cases.json "$ov/cases.json"
 ```
 
 | File | SHA-256 |
@@ -124,32 +150,53 @@ mv <evidence-dir>/14-4-overlay/cases.json.tmp <evidence-dir>/14-4-overlay/cases.
 | original `evals/core-tools/bmad-shard-pro/cases.json` | `8d7c3a1fbf08ac89da79a75f13cec0c6d1bf6d82e69ad5ed9298d66822542cb1` |
 | original `skills/core-tools/bmad/scripts/frontmatter.py` | `e4e8616502ace93e3fac378eeefaf22628439feb814246e56a2ee12e2e12a6fa` |
 
-The overlay holds those two files only. Parsed as JSON, the copy equals the original once the added entry is removed. A line `diff` shows one hunk at line 34: the fixture URL's line gains a trailing comma, and the new entry follows it; the URL's value, the other two cases and every rubric are unchanged. The original cases file holds no non-ASCII character, so the copy's bytes do not depend on the locale. A second build into a new folder by the same recipe was byte-identical to the first. The overlay used here sits at `<evidence-dir>/14-4-overlay`, outside BMAD-METHOD and outside any skill directory. Story 14.5 checks both digests before each arm and rebuilds the overlay with this recipe when that folder is gone.
+The overlay holds those two files only. Parsed as JSON, the copy equals the original once the added entry is removed. A line `diff` shows one hunk at line 34: the fixture URL's line gains a trailing comma and the new entry follows it; the URL's value, the other two cases and every rubric are unchanged. The original cases file holds no non-ASCII character, so the copy's bytes do not depend on the locale. A replay of these blocks into a new `<scratch>` and a new `<evidence-dir>` built an overlay byte-identical to the one used here. That one sits at `<evidence-dir>/14-4-overlay`, outside BMAD-METHOD and outside any skill directory. Story 14.5 checks both digests before each arm and rebuilds the overlay with this recipe when that folder is gone.
 
-**4. Preflight with the overlay.** Step 1's `run_evals.py` command with `--cases <evidence-dir>/14-4-overlay/cases.json` and `--output-dir <scratch>/runs-b`, the same empty root. Exit 3, the same stderr, `"total": 1`, `"skipped": 1`, `"failures": 0`. Outside the staged skill, the workspace holds `_bmad/scripts/frontmatter.py` and `tidewater-prd.md`.
+**4. Preflight with the overlay.**
+
+```bash
+preflight "$ov/cases.json" <scratch>/runs-b
+ws_b=$(echo <scratch>/runs-b/*/skill/tidewater-prd/cwd)
+(cd "$ws_b" && find . -path ./.agents -prune -o -type f -print | LC_ALL=C sort)
+tree_digest() {  # $1: folder; SHA-256 of the sorted per-file listing, __pycache__ left out
+  (cd "$1" && find . -type f -not -path '*/__pycache__/*' | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256 | cut -c1-64)
+}
+for f in "$ws_a/tidewater-prd.md" "$ws_b/tidewater-prd.md" "$ws_b/_bmad/scripts/frontmatter.py"; do shasum -a 256 "$f" | cut -c1-64; done
+for d in <scratch>/bm/skills/core-tools/bmad-shard-pro "$ws_a/.agents/skills/bmad-shard-pro" "$ws_b/.agents/skills/bmad-shard-pro"; do tree_digest "$d"; done
+cmp "$ws_b/_bmad/scripts/frontmatter.py" <scratch>/bm/skills/core-tools/bmad/scripts/frontmatter.py
+```
+
+`preflight` passes again: exit 3, one job, `tidewater-prd` skipped, the root still empty. Outside the staged skill, the workspace holds `./_bmad/scripts/frontmatter.py` and `./tidewater-prd.md`.
 
 | Staged item | `runs-a` | `runs-b` | Source |
 |---|---|---|---|
 | `_bmad/scripts/frontmatter.py` | absent | `e4e8616502ace93e3fac378eeefaf22628439feb814246e56a2ee12e2e12a6fa` | same, `skills/core-tools/bmad/scripts/frontmatter.py` |
 | `tidewater-prd.md` | `e477467bea21cb6a4ac228779d8a1d588345c1866eca68d748973b6c88792df1` | same | fetched by `gh api` at `59de7a03` |
-| skill tree (5 files) | `74e9f5f3a9b662e51250c99cce7d23c041aa89e195df7975f369263601d0f8a4` | same | same, over `<scratch>/bm/skills/core-tools/bmad-shard-pro` |
+| skill tree, 5 files, by `tree_digest` | `74e9f5f3a9b662e51250c99cce7d23c041aa89e195df7975f369263601d0f8a4` | same | same, over `<scratch>/bm/skills/core-tools/bmad-shard-pro` |
 
-The skill-tree digest is the SHA-256 of the sorted `shasum -a 256` listing of every file in the folder, `__pycache__` excluded.
-
-**5. `outline` with the overlay.** Step 2's commands in `<scratch>/runs-b/<run-id>/skill/tidewater-prd/cwd`. Exit 0.
+**5. `outline` with the overlay.**
 
 ```bash
 uv tree --script <scratch>/bm/skills/core-tools/bmad-shard-pro/scripts/shard_tool.py
-uv run --offline .agents/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . outline tidewater-prd.md
+(cd "$ws_b" && uv run .agents/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . \
+  outline tidewater-prd.md) > <scratch>/outline-b.json
+python3 -c '
+import json, sys
+o = json.load(open(sys.argv[1]))
+assert (o["lines"], o["words"], o["heading_count"], o["bare_heading_share"]) == (11039, 133990, 906, 0.0), o
+assert (o["proposed_cut"][0]["start"], o["proposed_cut"][0]["end"]) == (1, 145), o["proposed_cut"][0]
+' <scratch>/outline-b.json
+(cd "$ws_b" && uv run --offline .agents/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . \
+  outline tidewater-prd.md) | cmp - <scratch>/outline-b.json
 ```
 
-`uv tree` resolves `pyyaml v6.0.4`. That version comes from the unpinned range `>=6.0.2,<7`, so a later rebuild may resolve a newer 6.x; Story 14.5 records the version it gets. Rerun with `--offline`, `outline` exits 0 with byte-identical stdout, and the no-overlay workspace still exits 2 with the same message. Stdout is one JSON object with keys `source`, `lines`, `chars`, `words`, `frontmatter_lines`, `heading_count`, `bare_heading_share`, `existing_contents`, `blocks`, `identifier_prefixes`, `headings`, `proposed_cut` and `identifiers_defined_twice`. Checked values: `"lines": 11039`, `"words": 133990`, `"heading_count": 906`, `"bare_heading_share": 0.0`, and the first proposed cut is lines 1 to 145 under "Tidewater Fleet Platform — Product Requirements Document". The `source` value is the workspace's absolute path and is left out here.
+`outline` exits 0. `uv tree` resolves `pyyaml v6.0.4`. That version comes from the unpinned range `>=6.0.2,<7`, so a later rebuild may resolve a newer 6.x; Story 14.5 records the version it gets. Rerun with `--offline`, `outline` gives byte-identical stdout. Stdout is one JSON object with keys `source`, `lines`, `chars`, `words`, `frontmatter_lines`, `heading_count`, `bare_heading_share`, `existing_contents`, `blocks`, `identifier_prefixes`, `headings`, `proposed_cut` and `identifiers_defined_twice`. Checked values: `"lines": 11039`, `"words": 133990`, `"heading_count": 906`, `"bare_heading_share": 0.0`, and the first proposed cut is lines 1 to 145 under "Tidewater Fleet Platform — Product Requirements Document". The `source` value is the workspace's absolute path and is left out here.
 
-**Spend.** No run passed `--harness` or `--harness-name`, and both runs report the harness as absent, so no agent or model was started. Network use was the fixture fetch by `gh api` and whatever `uv` resolved; the `--offline` reruns show the scripts need nothing beyond the local cache.
+**Spend.** No run passed `--harness` or `--harness-name`, and both runs report the harness as absent, so no agent or model was started. Network use was the fixture fetch by `gh api` and whatever `uv` resolved; the `--offline` rerun in step 5 shows the script needs nothing beyond the local cache.
 
 **Validation.** `npm run validate` exit 0: 157 test files, 5,466 tests.
 
-**For the owner.** As pinned at `fc034b67`, the runner stages the `tidewater-prd` case without `_bmad/scripts/frontmatter.py`. `run_in_clean_room` gives a harness run the same staged files in a fresh git root, and the case's prompt names no other project, so when the agent passes that workspace as `{project-root}`, the skill's script exits 2 before any subcommand. This was observed in the stage-only workspace; no harness run was made. Listing the helper in the case's `files` makes `outline` exit 0 there. Whether and how to report this to BMAD-METHOD is the owner's decision; this story sends nothing.
+**For the owner.** As pinned at `fc034b67`, the runner stages the `tidewater-prd` case without `_bmad/scripts/frontmatter.py`. `run_in_clean_room` gives a harness run the same staged files in a fresh git root, and the case's prompt names no other project, so when the agent passes that workspace as `{project-root}`, the skill's script exits 2 before any subcommand. This was observed in the stage-only workspace; no harness run was made. With the overlay, which supplies the helper copied from `fc034b67` beside a copy of the cases file whose case lists its relative path, `outline` exits 0 there. Both parts are needed: a case that lists the path while the file is absent stops `run_evals.py` at fixture validation with exit 2, before any workspace is staged. Whether and how to report this to BMAD-METHOD is the owner's decision; this story sends nothing.
 
 ## Review Triage Log
 
@@ -167,6 +214,12 @@ bmad-build review, pass 1: blind hunter, edge-case hunter and verification-gap l
 - low: the `npm run validate` result, the interpreter, the `gh` login, the `uv tree` command, the unpinned PyYAML range, the line behind "every subcommand", the fixture and skill digests in both arms, the self-contradicting URL sentence, the 14.5 harness fallback, the 14.6 lockfile-age wait, and the missing 14.6 entries in the epic context.
 
 Rejected: the spec and ledger status mismatch (the workflow sets the ledger at its last step), a locale-dependent rebuild (the file is ASCII), a lockfile resolve bumping other packages (Story 14.6's own AC covers it), the context sync living in this pull request (it is part of this story's workflow and reverts with it), and `type: 'chore'` (Stories 14.1 and 14.2 use it).
+
+Codex round 1 (high 0, medium 3, low 0). All three patched; the replay below confirmed each fix.
+
+- medium: under `set -e` the preflight stopped the shell at its expected exit 3, a zero-job selection also exits 3, and `mkdir -p` accepted a reused root. Steps 1 to 5 now run as one `bash` session: the root is created fresh and checked empty before and after each run, expected exits are captured with `|| rc=$?`, and a check requires exit 3, one job and `tidewater-prd` skipped. A replay of every block into a new `<scratch>` and `<evidence-dir>` reached its end, and its overlay matched the one used here byte for byte.
+- medium: the skill-tree digest's method was described in words, and sorting the `shasum` lines gives a different value. The `tree_digest` function now records the exact command.
+- medium: the owner summary credited the `files` entry alone. It now says the overlay supplies the helper and the copied case lists it, and that a listed but absent helper stops `run_evals.py` at fixture validation with exit 2, which a run confirmed.
 
 ## Spec Change Log
 
@@ -186,13 +239,13 @@ Expected: `npm run validate` exits 0; the `grep` prints nothing and exits 1.
 **The finding**
 
 - Start here: what the owner can act on, scoped to what was observed.
-  [`spec-14-4-…:152`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L152)
+  [`spec-14-4-…:199`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L199)
 
 - Without the helper, `outline` exits 2 before any subcommand.
-  [`spec-14-4-…:94`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L94)
+  [`spec-14-4-…:109`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L109)
 
 - With the overlay, `outline` exits 0 on the staged fixture.
-  [`spec-14-4-…:139`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L139)
+  [`spec-14-4-…:177`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L177)
 
 **The preflight and the overlay**
 
@@ -200,10 +253,10 @@ Expected: `npm run validate` exits 0; the `grep` prints nothing and exits 1.
   [`spec-14-4-…:80`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L80)
 
 - Overlay recipe and digests that Story 14.5 checks before each arm.
-  [`spec-14-4-…:103`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L103)
+  [`spec-14-4-…:122`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L122)
 
 - Both arms staged the same skill and fixture; only the helper differs.
-  [`spec-14-4-…:129`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L129)
+  [`spec-14-4-…:155`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L155)
 
 - Story criteria mapped to steps; no model call.
   [`spec-14-4-…:68`](spec-14-4-whether-the-shard-pro-script-runs-inside-the-eval-room.md#L68)
