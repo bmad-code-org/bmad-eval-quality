@@ -11,7 +11,7 @@ risk: 'low'
 review: 'quick'
 review_source: 'pinned'
 lenses_ran: ['quick']
-review_loop_iteration: 1
+review_loop_iteration: 2
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -80,6 +80,10 @@ Codex round 1 (high 0, medium 2, low 0, false 0, maybe-false 0). Both patched.
 
 - medium, patch: the sentence mapped four rules and left per record, sibling cross-checks, and omissions and completeness in API terms, while "all seven still apply" was unconditional although relevance comes from each contract's declarations. The three checks now carry all seven, each naming its rules in the README's wording, and the sentence says the compiler enforces each rule where the contract's declarations make it relevant.
 - medium, patch: the recorded TeA command passed the seven gate names as arguments to `test:eval-quality-corpus`, so npm ran only that script. The command is now a fail-fast loop with one `npm run` per script, which is how the evidence runs were made.
+
+Codex round 2 (high 0, medium 1, low 0, false 0, maybe-false 0). Patched.
+
+- medium, patch: exclusion also carried missing required content, which the skill tutorial (`docs/how-to/evaluate-skill-behavior.md:127-128`) calls inclusion, reserving exclusion for forbidden or inapplicable content. Exclusion now covers ruled-out content in the whole document and each entry (the whole body, per record); omissions and completeness moved to the read-back check, which compares the written artifact with the required content. KEEP: one sentence, three checks, all seven rules named, the relevance clause.
 
 ## Verification
 
