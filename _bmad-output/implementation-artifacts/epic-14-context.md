@@ -14,6 +14,7 @@
 - Story 14.4: Whether the Shard Pro script runs inside the eval room
 - Story 14.5: A planted defect, caught for the reason it was planted
 - Story 14.6: TeA runs on the new eval-quality release
+- Story 14.7: The Tidewater case and defect through eval-quality
 
 ## Requirements & Constraints
 
@@ -47,6 +48,7 @@
 
 - 14.1 and 14.2 go first; 14.3 follows them. 14.4 is independent and can start any time.
 - 14.5 follows a passing 14.4 preflight and reuses 14.4's overlay, with the staged helper's digest verified in both arms. Its harness is Claude Code through `run_evals.py --harness`, unless the preflight shows it cannot run the case, in which case the record says why and names the harness used. Live runs wait for the owner's live-run budget, and grader calls count against it. It ends with a short summary for the owner to send to Toolsmith's maintainer; a rubric that already catches the defect is left as it is.
+- 14.7 follows 14.5 and reuses its graded folders `g01` to `g04`. It makes no model call, changes no engine file, and records any eval-quality defect it finds in `deferred-work.md`. It is independent of 14.6.
 - 14.6 starts after 14.1 to 14.5 merge: a `bump=patch` release from this repository, then a TeA pull request in which `eval-quality` is the only package whose locked version changes, the manifest stays `latest`, and TeA's lockfile-age gate passes unchanged, or the pull request waits until it does.
 - 14.2 and 14.3 both run the shared package and TeA check; 14.2 is the only one expected to show a member difference (`README.md`).
 - Upstream candidates for BMAD-METHOD (the missing-helper report, any warranted rubric addition, a known-bad variant recipe for Toolsmith's eval format) come after this epic, and the owner decides their content from the evidence of 14.4 and 14.5. BMAD-METHOD lets a small fix go straight to a pull request; a feature or large change needs maintainer alignment first.
