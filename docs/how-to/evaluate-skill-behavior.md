@@ -67,6 +67,7 @@ npm run build
 Run every command below in one shell.
 The first one makes a fresh, private output directory, and every command after it that writes or reads an output uses that directory.
 Each run of the lab starts from a new empty directory, so a step whose input no earlier step produced fails at once.
+Every use is spelled `${OUT_DIR:?}`, so if the directory was never made the shell refuses the command before anything is written.
 
 ```bash
 OUT_DIR="$(mktemp -d)"
@@ -118,7 +119,7 @@ It names every item in the index, including the three the rules mandate for a fr
 The contract is `corpus/dev/contracts/checklist-selection.json`, published in the package.
 
 ```bash
-node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out "$OUT_DIR/eval-contract.json"
+node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out "${OUT_DIR:?}/eval-contract.json"
 ```
 
 Exit `0`. The contract declares two behaviors over the frontend case, each with exactly one oracle:
@@ -136,7 +137,7 @@ node dist/cli/main.js preflight \
   --probes examples/tutorials/skill/probes.json \
   --observations examples/tutorials/skill/observations.json \
   --run-id skill-honest-1 \
-  --out "$OUT_DIR/honest-preflight-verdict.json"
+  --out "${OUT_DIR:?}/honest-preflight-verdict.json"
 ```
 
 ```bash
@@ -145,13 +146,13 @@ node dist/cli/main.js preflight \
   --probes examples/tutorials/skill/probes.json \
   --observations examples/tutorials/skill/observations.json \
   --run-id skill-degenerate-1 \
-  --out "$OUT_DIR/degenerate-preflight-verdict.json"
+  --out "${OUT_DIR:?}/degenerate-preflight-verdict.json"
 ```
 
 Both exit `0`, over four legs. The honest arm's verdict reads:
 
 ```bash
-node -e "const v=require('$OUT_DIR/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
+node -e "const v=require(process.argv[1]);console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)" "${OUT_DIR:?}/honest-preflight-verdict.json"
 ```
 
 ```text
@@ -171,14 +172,14 @@ The honest record is scored with a clean-control probe:
 ```bash
 node dist/cli/main.js score \
   --record examples/tutorials/skill/honest-run-record.json \
-  --contract "$OUT_DIR/eval-contract.json" \
+  --contract "${OUT_DIR:?}/eval-contract.json" \
   --probe examples/tutorials/skill/honest-probe.json \
-  --preflight-verdict "$OUT_DIR/honest-preflight-verdict.json" \
+  --preflight-verdict "${OUT_DIR:?}/honest-preflight-verdict.json" \
   --policy examples/tutorials/skill/scoring-policy.json \
   --isolation-manifest examples/tutorials/skill/honest-isolation-manifest.json \
   --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
   --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
-  --out "$OUT_DIR/honest-evidence-artifact.json"
+  --out "${OUT_DIR:?}/honest-evidence-artifact.json"
 ```
 
 Same contract, same oracles, a different record and a `gameability` probe:
@@ -186,14 +187,14 @@ Same contract, same oracles, a different record and a `gameability` probe:
 ```bash
 node dist/cli/main.js score \
   --record examples/tutorials/skill/degenerate-run-record.json \
-  --contract "$OUT_DIR/eval-contract.json" \
+  --contract "${OUT_DIR:?}/eval-contract.json" \
   --probe examples/tutorials/skill/degenerate-probe.json \
-  --preflight-verdict "$OUT_DIR/degenerate-preflight-verdict.json" \
+  --preflight-verdict "${OUT_DIR:?}/degenerate-preflight-verdict.json" \
   --policy examples/tutorials/skill/scoring-policy.json \
   --isolation-manifest examples/tutorials/skill/degenerate-isolation-manifest.json \
   --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
   --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
-  --out "$OUT_DIR/degenerate-evidence-artifact.json"
+  --out "${OUT_DIR:?}/degenerate-evidence-artifact.json"
 ```
 
 Both exit `0`, and each writes one evidence artifact.
@@ -201,7 +202,7 @@ Both exit `0`, and each writes one evidence artifact.
 ### 5. Read the honest score
 
 ```bash
-node -e "const e=require('$OUT_DIR/honest-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
+node -e "const e=require(process.argv[1]);for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))" "${OUT_DIR:?}/honest-evidence-artifact.json"
 ```
 
 ```text
@@ -215,7 +216,7 @@ Both oracles held. The clean-control probe contributes `null` to every strength 
 ### 6. Read the degenerate score
 
 ```bash
-node -e "const e=require('$OUT_DIR/degenerate-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
+node -e "const e=require(process.argv[1]);for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))" "${OUT_DIR:?}/degenerate-evidence-artifact.json"
 ```
 
 ```text
