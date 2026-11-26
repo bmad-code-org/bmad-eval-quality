@@ -178,6 +178,9 @@ Still out of scope after Epic 11: the `web` kind, which keeps failing under `uns
 - Epic 9: the interface kind a contract can describe (5 stories) — v1, shipped. Its register is `_bmad-output/implementation-artifacts/epic-9-context.md`.
 - Epic 10: a real adapter for the environment-probe port (1 story) — v1, shipped. Its register is `_bmad-output/implementation-artifacts/epic-10-context.md`.
 - Epic 11: the fifth interface kind, the evidence for the other four, and the documentation that describes them (13 stories) — v1
+- Epic 12: the exports a downstream consumer reads (5 stories)
+- Epic 13: the gates a consumer can run (3 stories; 13.2 and 13.3 are specified in their story files)
+- Epic 14: a lighter repository and a shorter path to the proof (5 stories)
 
 ## Epic 1: Zod schemas and the published JSON Schema export
 
@@ -1236,3 +1239,207 @@ The split is by dependency rather than by size, which is the only basis on which
 **Given** the whole change,
 **When** `npm run validate` runs,
 **Then** it is green, and every gate this repository runs on itself runs through the published path, so the package is held by the mechanism it ships rather than by a second copy.
+
+## Epic 14: a lighter repository and a shorter path to the proof
+
+`eval-quality` stays TeA Evaluate's evidence and scoring engine, and core BMAD can use either this package or Toolsmith's `bmad-eval`. This epic makes three independent changes around the engine: the skill tutorial shows its result before its stage internals, the story records of finished epics leave the checkout, and the existing Tidewater case in Shard Pro's evals is used to determine whether its native rubric catches a planted defect.
+
+**Why this epic exists.** At `65b24b5` the repository tracks 14,674,628 bytes. `src/` is 1,346,812 of them and `_bmad-output/` is 6,681,391. A reader of `docs/how-to/evaluate-skill-behavior.md` meets run-record fields, probe classification and isolation-manifest detail before the two-row result those stages produce. This repository holds no test of the claim it rests on, that a green evaluation proves nothing until it fails on broken output, against a case written in Toolsmith's eval format.
+
+**Definition of done.** A reader sees the tutorial's result first and reproduces it into a fresh, empty output directory. The story records of Epics 1 to 11 are out of the checkout and remain in history. The Tidewater case has a recorded answer to whether its rubric catches a planted defect, with every counted trial held to a stated validity test.
+
+**What this epic may not do.** No change to the public package API, the command line and its exit codes, the generated schemas, the adapters, the conformance surface, the published corpus or any verdict. No gate is weakened or reconfigured to let a change pass. No change to TeA's fixtures, baselines, scoring policy or release wiring. No history rewrite and no force-push. No claim of a smaller installation: the archive is a checkout measure. Nothing is sent to another repository without the repository owner's decision.
+
+**Order and independence.** Each story is its own pull request. Stories 14.1 and 14.2 go first and Story 14.3 follows them. Story 14.4 costs no model spend and can start at any time. Story 14.5 is deferred to a later pull request, and so is anything sent to BMAD-METHOD: both come after the eval-quality pull requests and any TeA follow-up. Each pull request reverts on its own.
+
+**The package and TeA check, used by Stories 14.2 and 14.3.** Build and pack the pull request's base and head with the same locked tools, then compare sorted member paths, modes and content hashes. Zero member differences ends the check, because TeA would install the same package. When a member differs, the candidate is tested against TeA. TeA's lockfile pins `eval-quality` 10.1.1, and its corpus gate requires the literal `latest` in its manifest and compares the installed version with the lock. So the baseline is `npm ci` in a disposable TeA checkout, and the packed candidate is installed there without being saved as a dependency. `package.json` and `package-lock.json` must still match `c7dfa7cfb`, and the installed members must match the tarball, before `npm run test:eval-quality-corpus` and the seven gate scripts (`test:boundary`, `test:direction`, `test:doc-claims`, `test:doc-counts`, `test:doc-invocations`, `test:lineage`, `test:lockfile-age`) are run. A difference in any engine member blocks the pull request until it is explained.
+
+**Baselines every citation below was read at.** `bmad-eval-quality` `main@65b24b5` (10.1.1), `BMAD-METHOD` `dev@fc034b67`, `bmad-method-test-architecture-enterprise` `main@c7dfa7cfb`. A story that starts from a later commit re-reads its citations first and reports any that moved.
+
+### Story 14.1: The skill tutorial shows its result first
+
+As a reader deciding whether this package fits a skill,
+I want the tutorial's result ahead of its stage internals, with the documented chain runnable in order into a fresh, empty output directory,
+So that I see what the contract catches before I learn how each stage works.
+
+**Acceptance Criteria:**
+
+**Given** `docs/how-to/evaluate-skill-behavior.md` already opens with the honest selection against the return-everything selection and labels the runner a deterministic stand-in,
+**When** the page is reordered,
+**Then** the two-row result table follows that opener directly, and the opener's own claims are unchanged.
+
+**Given** `score` reads the compiled contract and its arm's preflight verdict,
+**When** the commands are arranged,
+**Then** the executable path stays in dependency order, which is setup, compile, both preflights, both scores and both readbacks, and no score command sits ahead of the command that produces its input.
+
+**Given** the page carries three exit-annotated transcript pairs, at lines 93, 103 and 117, that `check:doc-invocations` compares line for line,
+**When** fences move,
+**Then** all three pairs survive intact: one invocation in the fence, its `text` block after it, and blank lines only between the two.
+
+**Given** six `doc-claims` entries in `eval-quality.config.json` pin text on this page, at lines 1047, 1290, 1301, 1312, 1570 and 1602,
+**When** a pinned sentence moves,
+**Then** it moves together with the example it introduces, or its configuration entry changes in the same commit, and `check:doc-claims` and `check:doc-counts` pass.
+
+**Given** run-record fields, probe classification and isolation-manifest detail sit in the main path today,
+**When** they are moved,
+**Then** they sit under one "Advanced" heading, and the page keeps its current URL and its generator.
+
+**Given** the 15 files under `examples/tutorials/skill/` are generated and held byte-exact by `check:tutorials`,
+**When** the story completes,
+**Then** that directory is byte-identical to its base commit, the generator is untouched, and the `canary-tutorials` job passes.
+
+**Given** every gate can pass while a reader's fresh run fails, because a reused output directory hides a missing producer and the canary does not run the page's readback assertions,
+**When** the change is verified,
+**Then** from a built checkout, a run of the documented chain with a fresh, empty output directory reproduces the table, with the values read from the JSON that run wrote: inclusion passes on both arms, exclusion passes on the honest arm and fails on the degenerate arm, and the gameability probe is qualified, exercised and caught. The overall verdict may be CONCERNS on both arms, and the page keeps saying so.
+
+**Given** the whole change,
+**When** `npm run validate` and the documentation build and link job run,
+**Then** both are green.
+
+### Story 14.2: The README maps the seven rules to a prose skill
+
+As a maintainer of a skill that writes documents,
+I want the README's authoring discipline to say how the seven rules apply to my kind of skill,
+So that I know which checks to write without translating from API examples.
+
+It carries the only published byte change in this epic.
+
+**Acceptance Criteria:**
+
+**Given** `README.md:104` states the seven rules in terms that read as API checks,
+**When** one sentence is added after them,
+**Then** it maps the rules to a prose skill through three checks, which are exclusion, negative inputs, and reading back the artifact the skill wrote, and no compilation rule and no other README claim changes.
+
+**Given** `scripts/build-shareable.mjs:36-42` builds `_bmad-output/shareable/eval-quality-readme.html` from `README.md`,
+**When** the README changes,
+**Then** the export is rebuilt in the same commit and `check:shareable` and the `canary-shareable` job pass.
+
+**Given** `README.md` is one of the five entries in the package's `files` list,
+**When** the change is packed,
+**Then** the member comparison from the epic's package and TeA check shows `README.md` as the only member that differs, and `CHANGELOG.md`'s `[Unreleased]` records the sentence.
+
+**Given** TeA installs this package and runs its gates,
+**When** the candidate is tested against TeA,
+**Then** the epic's package and TeA check passes on this pull request's tarball.
+
+### Story 14.3: The story records of finished epics leave the checkout
+
+As a contributor cloning this repository,
+I want the story records of finished epics out of the checkout,
+So that the working tree carries what current work reads.
+
+The repository owner decided these records can go. History keeps them, so the story needs no recovery procedure and no repair of the references that name them.
+
+**Acceptance Criteria:**
+
+**Given** Epics 1 to 11 are `done` in the ledger, and Story 11.1 is opened by the doc-claims gate at `scripts/doc-claim-sources.ts:350-355`,
+**When** the records are removed,
+**Then** every numbered story file of Epics 1 to 11 under `_bmad-output/implementation-artifacts/` is removed except 11.1. At `65b24b5` that is 55 files and 3,882,133 bytes, 26.5% of the tracked repository, and the count is recomputed at the branch's own base. A story header that still says review holds no file back, because the ledger's `done` is the record.
+
+**Given** Epics 12 and 13 are in progress and the build skills read the previous stories of the epic they are working in,
+**When** the records are removed,
+**Then** the story files of Epics 12, 13 and 14 stay, along with `sprint-status.yaml`, `deferred-work.md`, the epic context files and the `spec-*.md` files.
+
+**Given** the learning path and a few retained files name removed stories,
+**When** the records are removed,
+**Then** one line at the top of `_bmad-output/project-knowledge/learning-path-step-by-step.md` says the story records of Epics 1 to 11 are in history at tag `v10.1.1`, and no reference is repaired one by one.
+
+**Given** the reduction is a property of the checkout,
+**When** it is measured,
+**Then** tracked bytes and file counts are reported by group at base and head, with no statement about installed size.
+
+**Given** `_bmad-output/` is outside the package's `files` list,
+**When** the epic's package and TeA check runs on this pull request's base and head,
+**Then** the member comparison shows zero differences.
+
+**Given** no gate may be weakened to let the removal pass,
+**When** `npm run validate` and every pull-request canary run,
+**Then** all pass with no gate, configuration entry or fixture changed, and the change is one pull request with no history rewrite and no force-push.
+
+### Story 14.4: Whether the Shard Pro script runs inside the eval room
+
+As someone reading a green Shard Pro evaluation,
+I want to know whether the skill's own script ran in the evaluation workspace,
+So that a pass credits the skill and its script.
+
+The work reads `BMAD-METHOD` at `dev@fc034b67` and changes no file there. Its evidence is recorded in this story's file. It makes no live model call.
+
+**Acceptance Criteria:**
+
+**Given** `skills/core-tools/bmad-shard-pro/scripts/shard_tool.py:1216-1227` loads `<project-root>/_bmad/scripts/frontmatter.py` before any subcommand, and the eval runner stages the skill and the case's fixtures only,
+**When** `outline` runs in a project root that holds no BMAD install,
+**Then** its exit code and message are recorded. The observation to reproduce is exit 2 with "Run bmad setup for this project".
+
+**Given** omitting the harness flag can select a recorded harness,
+**When** the stage-only preflight runs,
+**Then** it uses an isolated project root with no customization resolver, selects `tidewater-prd` from `evals/core-tools/bmad-shard-pro/cases.json`, and requires exactly one skipped case and exit 3. A selection that yields zero jobs fails the step.
+
+**Given** the staged workspace from that preflight,
+**When** a real `outline` runs on the fetched fixture inside it,
+**Then** the exit code is recorded, and `--help` output is not accepted as evidence because it returns before the import.
+
+**Given** listing a path in a case does not create the file, and `shard_tool.py:2-5` declares PyYAML for `uv run`,
+**When** the temporary overlay is built,
+**Then** `skills/core-tools/bmad/scripts/frontmatter.py` at `fc034b67` is copied into the overlay at `_bmad/scripts/frontmatter.py`, that relative path is added to the existing case's `files` in a copy of the cases file, the original fixture and case are otherwise kept, and the interpreter used carries the declared PyYAML dependency.
+
+**Given** that overlay,
+**When** the preflight repeats with it,
+**Then** `outline` exits 0 in the staged workspace, the staged helper's digest matches the source file's, the overlay is identical for every later arm, and it lives outside `BMAD-METHOD` and outside any installable skill directory.
+
+**Given** this story spends nothing,
+**When** it runs,
+**Then** it makes no live model call.
+
+**Given** the finding concerns another repository,
+**When** it is recorded,
+**Then** the record holds commands with placeholders, exit codes and checked excerpts, carries no absolute path, and leaves reporting it upstream to the later pull request the owner has deferred that to.
+
+### Story 14.5: A planted defect, caught for the reason it was planted
+
+As someone deciding whether a rubric can be trusted,
+I want one clean run, one deterministic poisoned copy and one live variant graded under the same rules,
+So that a catch is attributable to the defect that was planted.
+
+Deferred to a later pull request, after the eval-quality pull requests and any TeA follow-up. Requires a passing Story 14.4 preflight, the owner's live-run budget and the owner's choice of harness. Uses the overlay from Story 14.4, with the staged helper's digest verified in both arms. Changes no file in `BMAD-METHOD`.
+
+**Acceptance Criteria:**
+
+**Given** a harness process can exit 0 after the agent improvised a split by hand,
+**When** any trial in either arm is counted,
+**Then** it used the same overlay and shows harness status `ok`, evidence that the staged script completed the build, a successful `check --rebuild` on that split, and an observable final reply. The harness, model, rubric and timeout are fixed before the first smoke run.
+
+**Given** one valid clean run,
+**When** the poisoned copy is made,
+**Then** a unique substantive line inside the FR-WO-015 requirement passage of the pinned fixture is chosen, the full passage is verified in its intended shard body in the clean output, only that line is deleted with the heading and navigation kept, the frozen source still matches the fixture, and `check --rebuild` reports the first differing source line.
+
+**Given** the clean output and the poisoned copy,
+**When** both are graded blind against the unchanged rubric,
+**Then** all four rubric lines are reported separately for each, the transcript's earlier clean check is kept out of the poisoned evidence, and the reference fixture sits outside the folder the grader reads output files from, so it cannot satisfy preservation by itself.
+
+**Given** no existing rubric line may identify the planted loss,
+**When** that is what the grading shows,
+**Then** one line that applies when the output is split is proposed, which is that the full FR-WO-015 passage appears word for word in a manifest-listed shard body, and both copies are regraded against it with a clean pass and a failure that cites the omission required.
+
+**Given** the live variant,
+**When** it is built,
+**Then** it is a full copy of the skill in a temporary folder also named `bmad-shard-pro`, with one changed instruction at `SKILL.md:73` that tells the reporter to give only the value precedence selects, in the final reply and in any separate conflicts list. The pinned fixture is checked first, and where a conflicting pair states no precedence the instruction names the first-listed value.
+
+**Given** a variant can fail the rubric with no selected-value defect, through a missing report, a truncated reply or a grader reading the wrong folder,
+**When** each variant trial is classified,
+**Then** whether the defect was produced is decided from the final reply and any conflicts list, with quotes, separately from the grader's verdict.
+
+**Given** a grader that fails both arms would otherwise earn a catch,
+**When** the valid trials are judged,
+**Then** rubric line 3 must pass on the clean arm. Where the variant reports only one value, line 3 must fail with evidence citing the omitted alternative in the final reply or the conflicts list. A clean miss, or an exercised variant that passes, is a failed comparison.
+
+**Given** the grader can read whatever it is handed,
+**When** evidence is assembled for it,
+**Then** it receives a neutral parent folder with separate paths for the reference fixture, the captured final reply, the grade output and the produced artifacts. Only produced files sit in the artifacts folder, with no staged skill copy and no arm-named path. Raw events, run folders and machine-specific paths stay local and apart, for confirming skill use.
+
+**Given** fewer than three runs is a quick look,
+**When** results are reported,
+**Then** three fresh valid runs per arm support a case-specific observation. Planned, completed, valid, exercised and correctly caught counts are reported by arm, alongside timeouts, setup failures, invalid runs, unexercised variants and grading errors, with the grader calls counted in the budget. Zero exercised variants is reported as inconclusive.
+
+**Given** the result concerns another repository's skill,
+**When** it is written up,
+**Then** it makes no claim about baseline strength or other harnesses. The three upstream candidates, which are the missing-helper report, any warranted rubric addition and a known-bad variant recipe for `skills/toolsmith/bmad-eval/references/eval-format.md`, wait for the later pull request the owner has deferred them to. BMAD-METHOD's `CONTRIBUTING.md` lets a small fix go straight to a pull request and asks for maintainer alignment before a feature or large change starts.
