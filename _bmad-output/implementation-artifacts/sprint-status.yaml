@@ -1,5 +1,5 @@
 # generated: 2026-08-10
-# last_updated: 2026-09-16
+# last_updated: 2026-11-26
 # project: evalcore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-09-10
+last_updated: 2026-11-26
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -138,3 +138,11 @@ development_status:
   13-1-publish-the-eight-gates-each-configured-by-the-consumer: review
   13-2-a-licence-read-by-evidence-and-an-age-exclusion-by-name: review
   13-3-publish-check-resolution-and-fix-the-require-shorthand: review
+
+  epic-14: backlog
+  14-1-the-skill-tutorial-shows-its-result-first: backlog
+  14-2-the-readme-maps-the-seven-rules-to-a-prose-skill: backlog
+  14-3-the-story-records-of-finished-epics-leave-the-checkout: backlog
+  14-4-whether-the-shard-pro-script-runs-inside-the-eval-room: backlog
+  14-5-a-planted-defect-caught-for-the-reason-it-was-planted: backlog
+  epic-14-retrospective: optional
