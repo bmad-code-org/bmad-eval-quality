@@ -11,7 +11,7 @@ risk: 'low'
 review: 'quick'
 review_source: 'pinned'
 lenses_ran: ['quick']
-review_loop_iteration: 0
+review_loop_iteration: 1
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -76,9 +76,14 @@ Quick lens, pass 1 (high 0, medium 4, low 0, false 0, maybe-false 0). All four p
 - medium, patch: "the oracle grades the file on disk" contradicted the glossary (`README.md:69-70`), where the oracle resolves against recorded evidence, and `README.md:88`, where the engine executes nothing. Now: the evidence holds the document itself and the skill's report of success sits apart from it.
 - medium, patch: "a malformed or incomplete request ... expect it to report the problem" was a second definition of negative inputs; `malformedInputSatisfaction` binds the `type-violating` matcher and checks no report. Now: "give the skill a malformed request".
 
+Codex round 1 (high 0, medium 2, low 0, false 0, maybe-false 0). Both patched.
+
+- medium, patch: the sentence mapped four rules and left per record, sibling cross-checks, and omissions and completeness in API terms, while "all seven still apply" was unconditional although relevance comes from each contract's declarations. The three checks now carry all seven, each naming its rules in the README's wording, and the sentence says the compiler enforces each rule where the contract's declarations make it relevant.
+- medium, patch: the recorded TeA command passed the seven gate names as arguments to `test:eval-quality-corpus`, so npm ran only that script. The command is now a fail-fast loop with one `npm run` per script, which is how the evidence runs were made.
+
 ## Verification
 
 **Commands:**
 - `npm run validate` -- expected: exit 0 (includes `check:shareable`, `check:docs`, `check:doc-claims`, `check:doc-counts`).
 - `npm run docs:build && npm run docs:validate-links` -- expected: exit 0.
-- Package and TeA check script (scratchpad): pack base and head, compare members; clone TeA at `c7dfa7cfb`, `npm ci`, `npm install --no-save <head tarball>`, verify manifest, lock and installed members, run `npm run test:eval-quality-corpus test:boundary test:direction test:doc-claims test:doc-counts test:doc-invocations test:lineage test:lockfile-age` -- expected: one differing member, every TeA script exit 0.
+- Package and TeA check script (scratchpad): pack base and head, compare members; clone TeA at `c7dfa7cfb`, `npm ci`, `npm install --no-save <head tarball>`, verify manifest, lock and installed members, run `for s in test:eval-quality-corpus test:boundary test:direction test:doc-claims test:doc-counts test:doc-invocations test:lineage test:lockfile-age; do npm run "$s" || exit 1; done` -- expected: one differing member, every TeA script exit 0.
