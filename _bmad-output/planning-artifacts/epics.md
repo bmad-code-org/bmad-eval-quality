@@ -180,7 +180,7 @@ Still out of scope after Epic 11: the `web` kind, which keeps failing under `uns
 - Epic 11: the fifth interface kind, the evidence for the other four, and the documentation that describes them (13 stories) — v1
 - Epic 12: the exports a downstream consumer reads (5 stories)
 - Epic 13: the gates a consumer can run (3 stories; 13.2 and 13.3 are specified in their story files)
-- Epic 14: a lighter repository and a shorter path to the proof (5 stories)
+- Epic 14: a lighter repository and a shorter path to the proof (6 stories)
 
 ## Epic 1: Zod schemas and the published JSON Schema export
 
@@ -1242,15 +1242,15 @@ The split is by dependency rather than by size, which is the only basis on which
 
 ## Epic 14: a lighter repository and a shorter path to the proof
 
-`eval-quality` stays TeA Evaluate's evidence and scoring engine, and core BMAD can use either this package or Toolsmith's `bmad-eval`. This epic makes three independent changes around the engine: the skill tutorial shows its result before its stage internals, the story records of finished epics leave the checkout, and the existing Tidewater case in Shard Pro's evals is used to determine whether its native rubric catches a planted defect.
+`eval-quality` stays TeA Evaluate's evidence and scoring engine, and core BMAD can use either this package or Toolsmith's `bmad-eval`. This epic makes three independent changes around the engine and then moves TeA onto the release that carries them: the skill tutorial shows its result before its stage internals, the story records of finished epics leave the checkout, and the existing Tidewater case in Shard Pro's evals is used to determine whether its native rubric catches a planted defect.
 
 **Why this epic exists.** At `65b24b5` the repository tracks 14,674,628 bytes. `src/` is 1,346,812 of them and `_bmad-output/` is 6,681,391. A reader of `docs/how-to/evaluate-skill-behavior.md` meets run-record fields, probe classification and isolation-manifest detail before the two-row result those stages produce. This repository holds no test of the claim it rests on, that a green evaluation proves nothing until it fails on broken output, against a case written in Toolsmith's eval format.
 
-**Definition of done.** A reader sees the tutorial's result first and reproduces it into a fresh, empty output directory. The story records of Epics 1 to 11 are out of the checkout and remain in history. The Tidewater case has a recorded answer to whether its rubric catches a planted defect, with every counted trial held to a stated validity test.
+**Definition of done.** A reader sees the tutorial's result first and reproduces it into a fresh, empty output directory. The story records of Epics 1 to 11 are out of the checkout and remain in history. The Tidewater case has a recorded answer to whether its rubric catches a planted defect, with every counted trial held to a stated validity test. TeA's lockfile pins the eval-quality release that carries this epic.
 
 **What this epic may not do.** No change to the public package API, the command line and its exit codes, the generated schemas, the adapters, the conformance surface, the published corpus or any verdict. No gate is weakened or reconfigured to let a change pass. No change to TeA's fixtures, baselines, scoring policy or release wiring. No history rewrite and no force-push. No claim of a smaller installation: the archive is a checkout measure. Nothing is sent to another repository without the repository owner's decision.
 
-**Order and independence.** Each story is its own pull request. Stories 14.1 and 14.2 go first and Story 14.3 follows them. Story 14.4 costs no model spend and can start at any time. Story 14.5 is deferred to a later pull request, and so is anything sent to BMAD-METHOD: both come after the eval-quality pull requests and any TeA follow-up. Each pull request reverts on its own.
+**Order and independence.** Each story is its own pull request. Stories 14.1 and 14.2 go first and Story 14.3 follows them. Story 14.4 costs no model spend and can start at any time. Story 14.5 follows a passing Story 14.4 preflight. Story 14.6 starts after Stories 14.1 to 14.5 merge. Anything sent to BMAD-METHOD comes after this epic; the owner decides its content from the evidence of Stories 14.4 and 14.5. Each pull request reverts on its own.
 
 **The package and TeA check, used by Stories 14.2 and 14.3.** Build and pack the pull request's base and head with the same locked tools, then compare sorted member paths, modes and content hashes. Zero member differences ends the check, because TeA would install the same package. When a member differs, the candidate is tested against TeA. TeA's lockfile pins `eval-quality` 10.1.1, and its corpus gate requires the literal `latest` in its manifest and compares the installed version with the lock. So the baseline is `npm ci` in a disposable TeA checkout, and the packed candidate is installed there without being saved as a dependency. `package.json` and `package-lock.json` must still match `c7dfa7cfb`, and the installed members must match the tarball, before `npm run test:eval-quality-corpus` and the seven gate scripts (`test:boundary`, `test:direction`, `test:doc-claims`, `test:doc-counts`, `test:doc-invocations`, `test:lineage`, `test:lockfile-age`) are run. A difference in any engine member blocks the pull request until it is explained.
 
@@ -1392,7 +1392,7 @@ The work reads `BMAD-METHOD` at `dev@fc034b67` and changes no file there. Its ev
 
 **Given** the finding concerns another repository,
 **When** it is recorded,
-**Then** the record holds commands with placeholders, exit codes and checked excerpts, carries no absolute path, and leaves reporting it upstream to the later pull request the owner has deferred that to.
+**Then** the record holds commands with placeholders, exit codes and checked excerpts, carries no absolute path, and leaves reporting it upstream to the owner.
 
 ### Story 14.5: A planted defect, caught for the reason it was planted
 
@@ -1400,7 +1400,7 @@ As someone deciding whether a rubric can be trusted,
 I want one clean run, one deterministic poisoned copy and one live variant graded under the same rules,
 So that a catch is attributable to the defect that was planted.
 
-Deferred to a later pull request, after the eval-quality pull requests and any TeA follow-up. Requires a passing Story 14.4 preflight, the owner's live-run budget and the owner's choice of harness. Uses the overlay from Story 14.4, with the staged helper's digest verified in both arms. Changes no file in `BMAD-METHOD`.
+Requires a passing Story 14.4 preflight. The harness is Claude Code through `run_evals.py --harness`, unless the preflight shows it cannot run the case, in which case the record says why and names the harness used. Uses the overlay from Story 14.4, with the staged helper's digest verified in both arms. Changes no file in `BMAD-METHOD`.
 
 **Acceptance Criteria:**
 
@@ -1442,4 +1442,30 @@ Deferred to a later pull request, after the eval-quality pull requests and any T
 
 **Given** the result concerns another repository's skill,
 **When** it is written up,
-**Then** it makes no claim about baseline strength or other harnesses. The three upstream candidates, which are the missing-helper report, any warranted rubric addition and a known-bad variant recipe for `skills/toolsmith/bmad-eval/references/eval-format.md`, wait for the later pull request the owner has deferred them to. BMAD-METHOD's `CONTRIBUTING.md` lets a small fix go straight to a pull request and asks for maintainer alignment before a feature or large change starts.
+**Then** it makes no claim about baseline strength or other harnesses. The story file ends with a short summary for the owner to send to Toolsmith's maintainer: what was run, the counts by arm, and which of the three upstream candidates the evidence supports. The candidates are the missing-helper report, a rubric addition only where the grading showed the rubric missed the planted loss, and a known-bad variant recipe for `skills/toolsmith/bmad-eval/references/eval-format.md`. A rubric that already catches the defect is left as it is. BMAD-METHOD's `CONTRIBUTING.md` lets a small fix go straight to a pull request and asks for maintainer alignment before a feature or large change starts.
+
+### Story 14.6: TeA runs on the new eval-quality release
+
+As TeA's maintainer,
+I want TeA's lockfile on the eval-quality release that carries this epic,
+So that TeA Evaluate installs what this repository now publishes.
+
+Starts after Stories 14.1 to 14.5 merge. The release is cut from this repository; the lockfile change is a pull request in `bmad-method-test-architecture-enterprise`, and this story's file records both.
+
+**Acceptance Criteria:**
+
+**Given** Stories 14.1 to 14.5 are merged and `CHANGELOG.md` `[Unreleased]` names every shipped change,
+**When** the publish workflow runs with `bump=patch`,
+**Then** npm, the git tag and the GitHub release show the same new version, and the published members match the package and TeA check for Stories 14.2 and 14.3.
+
+**Given** TeA's `package.json` keeps `eval-quality` at `latest` with a peer floor of `>=10.1.1`, and its lockfile pins 10.1.1,
+**When** the lockfile is refreshed on a branch,
+**Then** `eval-quality` is the only package whose version changes in `package-lock.json`, the manifest entry stays `latest`, and any other file changes only where TeA's own rules require it, such as `CHANGELOG.md` or `.lockfile-age-cache.json`.
+
+**Given** TeA's lockfile-age gate may reject a release younger than its policy allows,
+**When** `npm run test:lockfile-age` runs,
+**Then** it passes, or the pull request waits until it does. The gate and its policy are not changed.
+
+**Given** the refreshed lockfile,
+**When** `npm ci`, `npm run test:eval-quality-corpus`, the seven gate scripts and TeA's pull request checks run,
+**Then** all pass with no change to TeA's fixtures, baselines, scoring policy or release wiring.
