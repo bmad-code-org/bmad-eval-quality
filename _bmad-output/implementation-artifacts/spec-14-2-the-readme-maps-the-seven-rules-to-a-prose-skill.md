@@ -11,7 +11,7 @@ risk: 'low'
 review: 'quick'
 review_source: 'pinned'
 lenses_ran: ['quick']
-review_loop_iteration: 2
+review_loop_iteration: 3
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -84,6 +84,13 @@ Codex round 1 (high 0, medium 2, low 0, false 0, maybe-false 0). Both patched.
 Codex round 2 (high 0, medium 1, low 0, false 0, maybe-false 0). Patched.
 
 - medium, patch: exclusion also carried missing required content, which the skill tutorial (`docs/how-to/evaluate-skill-behavior.md:127-128`) calls inclusion, reserving exclusion for forbidden or inapplicable content. Exclusion now covers ruled-out content in the whole document and each entry (the whole body, per record); omissions and completeness moved to the read-back check, which compares the written artifact with the required content. KEEP: one sentence, three checks, all seven rules named, the relevance clause.
+
+Codex round 3: approved, no findings.
+
+CodeRabbit on `c5b7c55` (high 0, medium 0, low 2, false 0, maybe-false 0). Both patched in one rewording, because the same framing caused both.
+
+- low, patch: "so the evidence holds the document itself" read as a compiler guarantee. `state-change-read-back` satisfaction only needs a check relating a write's `call-inputs` pointer to a later non-state-changing step's response body. The read-back clause now says the comparison keeps the skill's report of success apart from the document it describes.
+- low, patch: exclusion "reads the whole document ... for content the request ruled out" read as compiler-enforced; `whole-body` satisfaction is key coverage at one step and inspects no operator or expected value. The sentence now calls the three checks ones the contract author writes, and says the compiler enforces each rule against the contract where its declarations make it relevant.
 
 ## Verification
 
