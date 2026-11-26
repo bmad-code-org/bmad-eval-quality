@@ -104,7 +104,7 @@ Placeholders: `<scratch>` is a new, empty scratch folder outside every repositor
 | Rubric | the four `tidewater-prd` lines of `<overlay>/cases.json`, copied to `rubric4.json` (`226049870bd6db7b0d9763dcedc57f181a3672c67a0cdf660de4588d5eeb87e2`); the five-line `rubric5.json` used only for regrades adds the Design Notes line (`581740acdf6463a460ad110bff871da273261a6fb7592be686568157cf667454`) |
 | Timeout | 1800 s per agent run and per grader run |
 | Skill trees (`tree_digest` from Story 14.4) | clean `74e9f5f3a9b662e51250c99cce7d23c041aa89e195df7975f369263601d0f8a4`; first variant `f65dd8d0e3aaccd1beaf795702fa441f93ad5dcb69af07ad90f804609cd421e6`; counted variant `6b67d8ccebfacc85233d670173291108a094b9ad77049ea1c69a48c257ad6238` |
-| Scripts in `<tools>` | `validity.py` `2a9525fa2dab937629f38a385571897b7e28d0abee6eb6d1717a3bb3fed3d7bc` and its successor `validity2.py` `0f0257fb320a9ad0549531ecb56345a6f1fda5fe62d6521680ea041a59eb4284`; `assemble.py` `d4c6127f2a8a54701dd974debc9c157b35052ee31efde29f8a000397ccf5bcff`; `poison.py` `8d2e1d6f0c661f0388a6d3f818704559e759afe2d525801dc20f396bf9f0ff06`; `grade.py` `3142cc751d9c9260b84cbf82efcf3406f76f19b348d963cee8ba5f6ff26a66fb`; `serial_variant2.sh` `c464773e7bb653a3f26bc8fb9990a6dfddefd59df2f45fe37dbd33d71ab8b230` |
+| Scripts in `<tools>` | `validity.py` `2a9525fa2dab937629f38a385571897b7e28d0abee6eb6d1717a3bb3fed3d7bc` and its successor `validity2.py` `2c21dadf407a7a571da1e562983323c7b978a003113a9bde743e393879d4ebb1` (negative-control transcripts `ad968f8e3b043c66ad20853ca7b5cc2cf1f6e560b10b0564a94718775885be0a` and `24af37f8a6b385e02d12eadfd48e36b204206945adbb3596c3d3e49af8e082fc`); `assemble.py` `d4c6127f2a8a54701dd974debc9c157b35052ee31efde29f8a000397ccf5bcff`; `poison.py` `8d2e1d6f0c661f0388a6d3f818704559e759afe2d525801dc20f396bf9f0ff06`; `grade.py` `3142cc751d9c9260b84cbf82efcf3406f76f19b348d963cee8ba5f6ff26a66fb`; `serial_variant2.sh` `c464773e7bb653a3f26bc8fb9990a6dfddefd59df2f45fe37dbd33d71ab8b230` |
 
 Each variant is `cp -R <bm>/skills/core-tools/bmad-shard-pro <scratch>/<variant|variant2>/bmad-shard-pro` with line 73 replaced; `diff -r` against the export reports `SKILL.md` only, and `diff` on it shows one hunk, `73c73`. The counted variant's `SKILL.md` has SHA-256 `114f643116811d6259359333d60fd3150a1b8174e8372a84228a13bf27492116`. The fixture check behind its line: `<fx>:85` says "The functional and non-functional requirement entries are the authoritative statements. Summary sections quote them for convenience." FR-BIL-001 is the only requirement entry that states a Professional price, so precedence selects $29. FR-TEL-021 and NFR-RET-004 are both requirement entries, so precedence selects neither, and the source states 18 months first.
 
@@ -126,29 +126,31 @@ uv run <bm>/skills/toolsmith/bmad-eval/scripts/run_evals.py --cases <overlay>/ca
 
 Before the counted variant, every `<tmp>` item the earlier runs and graders had made (21, each named in their transcripts) was moved into `<evidence-dir>/14-5-tmp-leftovers/`. After each of its runs, the driver moved there every `<tmp>` item that run's transcript names and the run had touched, so no counted variant run could read another run's files. Every `run_evals.py` call exited 0 with `"failures": 0`.
 
-**3. Validity.** Codex review round 1 showed that `validity.py` accepted a hand-written `printf` in place of the build. `validity2.py` replaced it for every trial:
+**3. Validity.** Codex review rounds 1 and 2 showed that `validity.py`, and then a first `validity2.py`, accepted success printed by something other than the build. The final `validity2.py` replaced both for every trial:
 
 ```bash
 python3 -I <tools>/validity2.py <case-dir> <skill-tree-digest>
 python3 -I <tools>/validity2.py <smoke-case-dir> <clean-tree-digest> --transcript <tools>/negative-control-transcript.jsonl
+python3 -I <tools>/validity2.py <smoke-case-dir> <clean-tree-digest> --transcript <tools>/negative-control-2-transcript.jsonl
+python3 -I <tools>/validity2.py <copy-of-smoke-case-dir-with-one-summary-edited> <clean-tree-digest>
 ```
 
-A trial counts only when all of these hold: `timing.json` status `ok`; a `Skill` call to `bmad-shard-pro` or a read of its staged `SKILL.md`; a staged build receipt; exactly one split folder; the staged helper still at digest `e4e8616502ace93e3fac378eeefaf22628439feb814246e56a2ee12e2e12a6fa` and the staged skill tree at its arm's digest; the frozen `.source/tidewater-prd.md` equal to the fixture (`e477467bea21cb6a4ac228779d8a1d588345c1866eca68d748973b6c88792df1`); a fresh `uv run --offline <cwd>/.claude/skills/bmad-shard-pro/scripts/shard_tool.py --project-root <cwd> check <split> --rebuild` exiting 0 with `"ok": true`; and a last `result` event of `success` with a non-empty reply. A staged build receipt is a Bash call in which, with quotes honoured, heredoc bodies dropped and the call's own variables and functions expanded, a simple command reads `uv run <path ending .claude/skills/bmad-shard-pro/scripts/shard_tool.py> --project-root <arg> build <plan>`; whose result is no error and shows build's `ok` true marker; any main path it names is `<cwd>/<split>/<split>.md` of this run, and any shard files it lists are, in order, a prefix of the final manifest's; and the final `.shards.json` carries the keys only `build` adds (`source` `.source/tidewater-prd.md`, `frontmatter_lines`, `sub_maps`). The negative control is the smoke transcript with its six Bash calls that mention `shard_tool.py` and `build` rewritten as `printf '%s\n' '<the original command>'`; `validity2.py` rejects it with `staged_build_receipt` false. `uv tree --script` resolved `pyyaml v6.0.4`.
+A trial counts only when all of these hold: `timing.json` status `ok`; a `Skill` call to `bmad-shard-pro` or a read of its staged `SKILL.md`; a staged build receipt; a reproduction; exactly one split folder; the staged helper still at digest `e4e8616502ace93e3fac378eeefaf22628439feb814246e56a2ee12e2e12a6fa` and the staged skill tree at its arm's digest; the frozen `.source/tidewater-prd.md` equal to the fixture (`e477467bea21cb6a4ac228779d8a1d588345c1866eca68d748973b6c88792df1`); a fresh `uv run --offline <cwd>/.claude/skills/bmad-shard-pro/scripts/shard_tool.py --project-root <cwd> check <split> --rebuild` exiting 0 with `"ok": true`; and a last `result` event of `success` with a non-empty reply. A staged build receipt is a Bash call in which, with quotes honoured, heredoc bodies dropped and the call's own variables and functions expanded, a simple command reads `uv run <path ending .claude/skills/bmad-shard-pro/scripts/shard_tool.py> --project-root <arg> build <plan>`; and whose result, paired with that call by its event id, is no error and holds output only `build` prints: this run's `<cwd>/<split>/<split>.md` as the `"main"` value and at least one `shards_cut` entry, a file with its `chars`. Agents often rebuilt after changing their plan and piped the last build's output through a summarizer, so the receipt shows that the staged script built in this workspace, and the reproduction ties the assessed output to it: the trial's own staged script, run again with `--offline` from the output's saved `.shards.json` and its frozen source into an empty scratch folder, must write files byte-identical to every file in the output folder, and the final `.shards.json` must carry the keys only `build` adds (`source` `.source/tidewater-prd.md`, `frontmatter_lines`, `sub_maps`). Three negative controls are rejected: the smoke transcript with its six Bash calls that mention `shard_tool.py` and `build` rewritten as `printf '%s\n' '<the original command>'` (no receipt); the smoke transcript with its two staged builds rewritten as `false && { <the build>; }; printf 'True\n'` and their results as `True` (no receipt); and a copy of the smoke case with one shard summary edited by hand (the reproduction differs at that file, and `check --rebuild` fails). `uv tree --script` resolved `pyyaml v6.0.4`.
 
-| Trial | Elapsed | Shards | Receipt: the staged build command | `result` events | Nested agents | Valid |
-|---|---|---|---|---|---|---|
-| smoke (not counted) | 334 s | 105 | `uv run .claude/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . build tidewater-prd.plan.json` | 1 | 0 | yes |
-| clean 1 | 386 s | 109 | `… --project-root . build <tmp>/shardwork/plan.json` | 1 | 0 | yes |
-| clean 2 | 316 s | 107 | `… --project-root . build <tmp>/shardgen/plan.json` | 1 | 0 | yes |
-| clean 3 | 345 s | 104 | `… --project-root . build tidewater-shard-plan.json` | 1 | 0 | yes |
-| first variant 1 (not counted) | 1484 s | 103 | `… --project-root . build <tmp>/shardplan/plan.json` | 3 | 1 | yes |
-| first variant 2 (not counted) | 380 s | 109 | `… --project-root . build "$W/plan.json"`, `W` from `mktemp -d` | 1 | 3 | yes |
-| first variant 3 (not counted) | 410 s | 107 | `… --project-root . build tidewater-shard-plan.json` | 1 | 0 | yes |
-| counted variant 1 | 407 s | 114 | `… --project-root . build <tmp>/shardwork/plan.json` | 1 | 0 | yes |
-| counted variant 2 | 326 s | 108 | `… --project-root . build <tmp>/shardwork/plan.json` | 1 | 0 | yes |
-| counted variant 3 | 389 s | 104 | `… --project-root . build <tmp>/shardwork/plan.json --force` | 1 | 0 | yes |
+| Trial | Elapsed | Shards | Receipt: `shards_cut` entries shown | Reproduced files, byte-identical | `result` events | Nested agents | Valid |
+|---|---|---|---|---|---|---|---|
+| smoke (not counted) | 334 s | 105 | 39 | 107 of 107 | 1 | 0 | yes |
+| clean 1 | 386 s | 109 | 9 | 111 of 111 | 1 | 0 | yes |
+| clean 2 | 316 s | 107 | 6 | 109 of 109 | 1 | 0 | yes |
+| clean 3 | 345 s | 104 | 37 | 105 of 105 | 1 | 0 | yes |
+| first variant 1 (not counted) | 1484 s | 103 | 17 | 105 of 105 | 3 | 1 | yes |
+| first variant 2 (not counted) | 380 s | 109 | 18 | 111 of 111 | 1 | 3 | yes |
+| first variant 3 (not counted) | 410 s | 107 | 106 | 109 of 109 | 1 | 0 | yes |
+| counted variant 1 | 407 s | 114 | 26 | 116 of 116 | 1 | 0 | yes |
+| counted variant 2 | 326 s | 108 | 9 | 110 of 110 | 1 | 0 | yes |
+| counted variant 3 | 389 s | 104 | 9 | 106 of 106 | 1 | 0 | yes |
 
-`…` stands for `uv run .claude/skills/bmad-shard-pro/scripts/shard_tool.py`, written directly or through a variable or function the same call defines. Every trial also ran `check --rebuild` itself before replying.
+Each receipt's command is `uv run .claude/skills/bmad-shard-pro/scripts/shard_tool.py --project-root . build <plan>`, written directly or through a variable or function the same call defines, with `<plan>` a file in the workspace or under `<tmp>`. Reproduced files are the shards, the map and the identifier lookup. Every trial also ran `check --rebuild` itself before replying.
 
 **4. The poisoned copy and the grader's folder.** Every graded output got a neutral folder `<evidence-dir>/14-5-grade/g<NN>` (key kept in `14-5-grade-key.json` beside it): `reference/tidewater-prd.md` (the fixture), `reply/final-reply.md` (the last `result` event's text), `grade/` (empty) and `artifacts/`, the workspace minus `.claude/` and the staged helper. No path names an arm, and no grader saw a transcript.
 
@@ -184,17 +186,24 @@ python3 -I <tools>/grade.py <bm> <tools>/harness.json <overlay>/cases.json \
 
 The existing rubric misses the planted loss. The `g04` grader found it and still passed line 1: "the one missing line is FR-WO-015's '**Statement:** …' … The expectation passes only because its 'original kept intact somewhere' clause allows it." Line 4 also passed: "The one defect is an omission, not a rewording". So line 5 was proposed and both copies regraded. `g05` line 5: "Source lines 2531-2552 … appear as one exact substring in artifacts/tidewater-prd/work-orders-fr-wo-007-017.md and in no other shard." `g06` line 5: "has '#### FR-WO-015 — Create work orders from fault events' at body line 184, followed by two blank lines and then '**Priority:** Must'. The source line 2533 '**Statement:** …' is missing. grep finds that sentence only in .source/tidewater-prd.md." To test line 5 for false failures, the other two clean outputs were regraded on all five lines (`g10`, `g11`): line 5 passed on both, each grader naming the one shard that holds lines 2531 to 2552, and lines 1 to 4 repeated their first verdicts. Line 5 names the planted passage, so it catches only this loss. The four-line graders named the general gap themselves: line 1's "original kept intact somewhere" clause lets `.source/` satisfy preservation (`g01`: "Keeping a hidden .source copy alone satisfies this, even if every shard were truncated or paraphrased"). Requiring the manifest-listed shard bodies to reproduce every source line would cover any lost passage; this story tested only the narrow line the story prescribes.
 
-**6. Was the variant's defect produced?** Decided from each final reply before its grade was read. No output holds a separate conflicts file.
+**6. Was the variant's defect produced?** The quotes were taken from each final reply before its grade was read. No output holds a separate conflicts file, so the conflict notes are the shard frontmatter summaries and the map lines. After Codex review round 2 one rule was fixed and applied to every trial, apart from the grades: a trial is **exercised** when, for at least one conflict pair, the final reply gives one value only and no conflict note in the output gives the other; **reply-only** when the reply gives one value only but the notes keep the other value of every such pair; **unexercised** when the reply gives no single value.
 
-| Counted variant run | Price in the reply | Retention in the reply | Exercised |
+| Trial | Reply: $27 / $29 / 18 / 25 months | Notes: $27 / $29 / 18 / 25 months | Class |
 |---|---|---|---|
-| 1 (`g12`) | "**Professional plan price: $29** per vehicle per month. … Sections 1.5, 5.3, 17.4 and 22.4 and journey UJ-15 state a different figure." | "**Raw telematics retention: 18 months.** … I went with FR-TEL-021 because it comes first in the document. NFR-RET-004, the 15.5 retention schedule and Appendix A.7 give another period." | yes, both pairs |
-| 2 (`g13`) | not reported: "The plan prices, performance targets and other retention periods agree wherever they're repeated." | "The value stated first is **18 months**, in FR-TEL-021 … The other value appears in NFR-RET-004" | yes, retention |
-| 3 (`g14`) | "**Professional plan price: $29 per vehicle per month**, from FR-BIL-001 … the six summary sections that disagree are out of date." | "**Raw telematics retention: 18 months** (90 days hot, then a cold archive), as FR-TEL-021 states. Other sections disagree with it." | yes, both pairs |
+| counted variant 1 (`g12`) | no / yes / yes / no | yes / yes / yes / yes | reply-only, both pairs |
+| counted variant 2 (`g13`) | no / no / yes / no | no / no / no / no | exercised, retention |
+| counted variant 3 (`g14`) | no / yes / yes / no | yes / yes / yes / yes | reply-only, both pairs |
+| first variant 1 (`g07`) | no / no / no / no | yes / yes / yes / yes | unexercised |
+| first variant 2 (`g08`) | no / yes / yes / no | no / no / no / no | exercised, both pairs |
+| first variant 3 (`g09`) | no / yes / yes / no | no / no / no / no | exercised, both pairs |
 
-The shard summaries follow the unchanged `SKILL.md:51`. Those of counted variant runs 1 and 3 name both values of both pairs; those of run 2 name none of $27, $29, 18 months or 25 months.
+| Counted variant run | Price in the reply | Retention in the reply | Class |
+|---|---|---|---|
+| 1 (`g12`) | "**Professional plan price: $29** per vehicle per month. … Sections 1.5, 5.3, 17.4 and 22.4 and journey UJ-15 state a different figure." | "**Raw telematics retention: 18 months.** … I went with FR-TEL-021 because it comes first in the document. NFR-RET-004, the 15.5 retention schedule and Appendix A.7 give another period." | reply-only |
+| 2 (`g13`) | not reported: "The plan prices, performance targets and other retention periods agree wherever they're repeated." | "The value stated first is **18 months**, in FR-TEL-021 … The other value appears in NFR-RET-004" | exercised |
+| 3 (`g14`) | "**Professional plan price: $29 per vehicle per month**, from FR-BIL-001 … the six summary sections that disagree are out of date." | "**Raw telematics retention: 18 months** (90 days hot, then a cold archive), as FR-TEL-021 states. Other sections disagree with it." | reply-only |
 
-The first variant, kept for the record: run 1's whole final reply is "The scheduled check-in is stopped. The sharding is finished, checked and uncommitted, as described above." (unexercised; it started a background agent and a `ScheduleWakeup`, and an earlier of its three `result` events gave only $29 and 18 months); runs 2 and 3 gave only $29 and 18 months (exercised, both pairs). Its runs 2 and 3 summaries name no value; run 1's name both.
+The shard summaries follow the unchanged `SKILL.md:51`, and in counted variant runs 1 and 3 they kept both values of both pairs. The first variant, kept for the record: run 1's whole final reply is "The scheduled check-in is stopped. The sharding is finished, checked and uncommitted, as described above." (it started a background agent and a `ScheduleWakeup`, and an earlier of its three `result` events gave only $29 and 18 months); runs 2 and 3 gave only $29 and 18 months in replies whose outputs' notes name no value.
 
 **7. Line 3 against the planted defect.**
 
@@ -203,14 +212,14 @@ The first variant, kept for the record: run 1's whole final reply is "The schedu
 | `g01` | clean 1 | pass | "'1. Professional plan price: $27 or $29.' … 'How long raw telematics data is kept: 18 or 25 months'" |
 | `g02` | clean 2 | pass | "Item 1 gives $27 … and $29 … Item 2 gives 18 months … and 25 months" |
 | `g03` | clean 3 | fail | "The price conflict is missed, and the reply contradicts it: 'Prices, availability targets, SOC 2 dates and the 72-hour offline window agree across the document.'" |
-| `g12` | counted variant 1, exercised | fail | "$27 appears nowhere in the reply. … 25 months appears nowhere in the reply. So the reply asserts one value per conflict." |
+| `g12` | counted variant 1, reply-only | fail | "$27 appears nowhere in the reply. … 25 months appears nowhere in the reply. So the reply asserts one value per conflict." |
 | `g13` | counted variant 2, exercised | fail | "the reply names '18 months' in FR-TEL-021 but never says '25 months' … the price conflict is missed and denied." |
-| `g14` | counted variant 3, exercised | fail | "it never mentions $27. On retention the reply leads with '**Raw telematics retention: 18 months**' and never states 25." |
+| `g14` | counted variant 3, reply-only | fail | "it never mentions $27. On retention the reply leads with '**Raw telematics retention: 18 months**' and never states 25." |
 | `g07` | first variant 1, unexercised | pass | "The final reply … mentions neither conflict", passed on map notes such as "'Conflict: states the Professional price as $27; FR-BIL-001 in billing-plans-metering-addons.md states $29.'" |
 | `g08` | first variant 2, exercised | fail | "The figure $27 does not appear. … The figure 25 does not appear." |
 | `g09` | first variant 3, exercised | fail | "reply/final-reply.md never states $27 or 25 months." |
 
-**Verdict: the comparison failed under the story's rule.** All three counted variant runs were exercised and all three were caught, each failure citing the value the reply left out; no exercised variant passed. The `g12` and `g14` graders failed the reply although those outputs' maps carry both values. Clean run 3 is a clean miss: the shipped skill did miss the price conflict, and the grader quoted that correctly. A clean miss makes the comparison failed, so this story cannot attribute line 3's variant failures to the planted defect alone. The ungraded smoke reply also reported no conflict ("Because I found no conflicts, no shard summary flags one."); it is an observation outside the counts.
+**Verdict: the comparison failed under the story's rule.** Line 3 failed on all three counted variant runs, each failure citing the value the reply left out. Under the rule above, one of them is unambiguous: counted variant 2 (`g13`) was exercised and caught. Counted variants 1 and 3 (`g12`, `g14`) are reply-only: their maps keep both values, and their graders failed line 3 on the reply alone, while the `g07` grader passed line 3 on equivalent map notes. No exercised variant passed. Clean run 3 is a clean miss: the shipped skill did miss the price conflict, and the grader quoted that correctly. A clean miss makes the comparison failed, so this story cannot attribute line 3's variant failures to the planted defect alone. The ungraded smoke reply also reported no conflict ("Because I found no conflicts, no shard summary flags one."); it is an observation outside the counts.
 
 **Counts.**
 
@@ -223,9 +232,11 @@ The first variant, kept for the record: run 1's whole final reply is "The schedu
 | Invalid runs | 0 | 0 | 0 |
 | Valid | 3 | 3 | 3 |
 | Ran alone in the host's temporary directory | no (three at once) | yes | no (three at once) |
-| Exercised | not applicable | 3 | 2 |
+| Exercised | not applicable | 1 | 2 |
+| Reply-only (notes keep the other value) | not applicable | 2 | 0 |
 | Unexercised | not applicable | 0 | 1 (truncated reply) |
-| Correctly judged on line 3 | 2 of 3 passed; 1 clean miss | 3 of 3 exercised caught | 2 of 2 exercised caught |
+| Correctly judged on line 3 | 2 of 3 passed; 1 clean miss | 1 of 1 exercised caught | 2 of 2 exercised caught |
+| Reply-only runs failing line 3 on the reply | not applicable | 2 of 2 | not applicable |
 | Exercised but passed line 3 | not applicable | 0 | 0 |
 | Grader execution or schema errors | 0 | 0 | 0 |
 | Grader calls | 3, plus 3 line-5 regrades (`g05`, `g10`, `g11`) | 3 | 3 |
@@ -261,6 +272,11 @@ Codex round 1 (changes requested, 7). All seven patched.
 - "Grading errors 0" had no definition, and `g08` miscounts shards. The row is now grader execution or schema errors, with the definition and the `g08` note.
 - The path check missed bare absolute directory names. The record uses `<tmp>` and the host's temporary directory, and the check now catches a root followed by a delimiter.
 
+Codex round 2 (changes requested, 2). Both patched.
+
+- The three counted catches mixed reporting outcomes: the `g12` and `g14` maps keep both values. One exercise rule now covers the reply and the conflict notes, applied apart from the grades; the counted variant has one exercised and caught run (`g13`) and two reply-only runs whose line 3 failed on the reply. Counts, verdict and the maintainer draft carry the split.
+- The first `validity2.py` accepted a bare `True` printed by a later command. A receipt now needs output only `build` prints, from the result paired with the build call, and a reproduction run of the trial's own staged script must rebuild every output file byte for byte. All ten trials pass; the `printf` control, a skipped build followed by `printf 'True'`, and a hand-edited shard are rejected.
+
 ## Spec Change Log
 
 ## Verification
@@ -280,17 +296,17 @@ Result at the final edit: `npm run validate` exited 0 (157 test files, 5,466 tes
 
 **The result**
 
-- Start here: the comparison failed on one clean miss; all three counted variants were caught.
-  [`spec-14-5-…:213`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L213)
+- Start here: the comparison failed on one clean miss; one counted variant exercised and caught.
+  [`spec-14-5-…:222`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L222)
 
 - The existing rubric passes the poisoned copy; line 5 separates it from three clean outputs.
-  [`spec-14-5-…:174`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L174)
+  [`spec-14-5-…:176`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L176)
 
 - Exercise judged from each reply with quotes, before the grade was read.
-  [`spec-14-5-…:187`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L187)
+  [`spec-14-5-…:189`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L189)
 
 - Counts by arm, which arms ran alone, and spend against the cap.
-  [`spec-14-5-…:215`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L215)
+  [`spec-14-5-…:224`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L224)
 
 **Trust in the trials**
 
@@ -300,14 +316,14 @@ Result at the final edit: `npm run validate` exited 0 (157 test files, 5,466 tes
 - Serial counted variant with temporary-directory leftovers moved out between runs.
   [`spec-14-5-…:111`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L111)
 
-- Validity tied to an executed staged build, with a printf negative control.
+- Validity tied to a staged build receipt and a byte-identical reproduction, with three negative controls.
   [`spec-14-5-…:129`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L129)
 
 - The poisoned copy's recipe and the grader's neutral folder.
-  [`spec-14-5-…:153`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L153)
+  [`spec-14-5-…:155`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L155)
 
 - Shared temporary directory, multi-result transcripts and grader blindness.
-  [`spec-14-5-…:235`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L235)
+  [`spec-14-5-…:246`](spec-14-5-a-planted-defect-caught-for-the-reason-it-was-planted.md#L246)
 
 **Peripherals**
 
@@ -321,4 +337,4 @@ Result at the final edit: `npm run validate` exited 0 (157 test files, 5,466 tes
 
 Draft for the owner to send; this story sends nothing.
 
-We ran Shard Pro's `tidewater-prd` case from BMAD-METHOD `fc034b67` through `run_evals.py --harness` with Claude Code 2.1.332 on its default model: three runs with the skill as shipped, and three runs, one at a time, with one line of `SKILL.md:73` changed so the report gives only the value the PRD's precedence rule selects, naming 18 months where the rule does not decide. All six were valid and built through the skill's script, but only with `_bmad/scripts/frontmatter.py` staged beside a copy of the case; without it the script exits 2 before any subcommand, so the missing-helper report has support. Deleting FR-WO-015's Statement line from one shard of a passing output left all four rubric lines passing, because the kept `.source/` copy satisfies line 1; an added line requiring the full FR-WO-015 passage word for word in a manifest-listed shard passed all three shipped outputs and failed the broken copy, so that narrow addition has support. On line 3, all three variant runs gave single values and all three failed it citing the omitted value, while one of the three shipped runs also failed it because it really missed the $27/$29 conflict; under our rule that clean miss fails the comparison, so the known-bad variant recipe for `eval-format.md` remains unvalidated. Two runner observations came up: concurrent cases share the host's temporary directory, where one run saw another overwrite its files, and a run that starts background work can end on a short final `result` event that also skews the token count. Per BMAD-METHOD's `CONTRIBUTING.md`, the helper staging and the rubric line look like small fixes for a pull request; whether the runner changes need alignment first is for you to say.
+We ran Shard Pro's `tidewater-prd` case from BMAD-METHOD `fc034b67` through `run_evals.py --harness` with Claude Code 2.1.332 on its default model: three runs with the skill as shipped, and three runs, one at a time, with one line of `SKILL.md:73` changed so the report gives only the value the PRD's precedence rule selects, naming 18 months where the rule does not decide. All six were valid and built through the skill's script, but only with `_bmad/scripts/frontmatter.py` staged beside a copy of the case; without it the script exits 2 before any subcommand, so the missing-helper report has support. Deleting FR-WO-015's Statement line from one shard of a passing output left all four rubric lines passing, because the kept `.source/` copy satisfies line 1; an added line requiring the full FR-WO-015 passage word for word in a manifest-listed shard passed all three shipped outputs and failed the broken copy, so that narrow addition has support. On line 3, all three variant runs failed citing a value the reply left out, but only one is unambiguous: in the other two the reply gave one value while the output's map still gave both, and the grader failed the reply alone. One of the three shipped runs also failed line 3 because it really missed the $27/$29 conflict; under our rule that clean miss fails the comparison, so the known-bad variant recipe for `eval-format.md` remains unvalidated. Two runner observations came up: concurrent cases share the host's temporary directory, where one run saw another overwrite its files, and a run that starts background work can end on a short final `result` event that also skews the token count. Per BMAD-METHOD's `CONTRIBUTING.md`, the helper staging and the rubric line look like small fixes for a pull request; whether the runner changes need alignment first is for you to say.
