@@ -45,9 +45,9 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `docs/how-to/evaluate-skill-behavior.md` -- after the opener add `## The result` with a two-row Markdown table (rows: inclusion `O-001`, exclusion `O-002`; columns: honest arm, degenerate arm), one sentence on the gameability vector and one on `CONCERNS` at exit `0` -- the result before the internals.
-- [ ] same file -- trim the lab to commands, readbacks, transcripts and one-line reads per step; drop the step-1 rule-check table that the result table now carries; say the output directory starts empty -- shortest executable path.
-- [ ] same file -- add `## Advanced` after Key takeaways and the stop line; move the twin-run callout and diagram, the replay-input callout, the preflight explanation and attribution boundary, the strength-vector and verdict-basis reading, and the AD-40 pairing paragraph there; demote the existing reference H2 sections to H3 under it -- one Advanced heading.
+- [x] `docs/how-to/evaluate-skill-behavior.md` -- after the opener add `## The result` with a two-row Markdown table (rows: inclusion `O-001`, exclusion `O-002`; columns: honest arm, degenerate arm), one sentence on the gameability vector and one on `CONCERNS` at exit `0` -- the result before the internals.
+- [x] same file -- trim the lab to commands, readbacks, transcripts and one-line reads per step; drop the step-1 rule-check table that the result table now carries; say the output directory starts empty -- shortest executable path.
+- [x] same file -- add `## Advanced` after Key takeaways and the stop line; move the twin-run callout and diagram, the replay-input callout, the preflight explanation and attribution boundary, the strength-vector and verdict-basis reading, and the AD-40 pairing paragraph there; demote the existing reference H2 sections to H3 under it -- one Advanced heading.
 
 **Acceptance Criteria:**
 - Given the reordered page, when read top to bottom, then the result table is the first content after the opener and the opener's text is byte-identical to base.
