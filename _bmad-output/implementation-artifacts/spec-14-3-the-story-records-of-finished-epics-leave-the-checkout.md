@@ -80,7 +80,7 @@ Oneshot route: three edits plus a mechanical deletion; no code.
 
 The 55 files and 3,882,133 bytes match the epic's count at `65b24b5`. The repository grew by 3 files and 53,932 bytes since then: the 3 files are the Epic 14 context and the 14.1 and 14.2 specs, and the largest byte growth is `epics.md` (+19,968). So the share is 26.4% at this base against the epic's 26.5%. Citations re-read at `2601bf5`: `scripts/doc-claim-sources.ts:350-355` still names the 11.1 file; nothing moved.
 
-**Head measure, same method:**
+**Head measure at `5c93c79`, before main was merged in, same method:**
 
 | Group | Files | Bytes |
 |---|---:|---:|
@@ -96,6 +96,17 @@ The 55 files and 3,882,133 bytes match the epic's count at `65b24b5`. The reposi
 The other implementation artifacts gain this spec; the learning-path line and the two status edits account for the rest of the `_bmad-output/` difference.
 
 **Evidence (2026-11-26):** all 55 removed paths exist at `v10.1.1` (`git cat-file -e`), and the staged deletions equal the removal set exactly. `npm run validate` exit 0 (5,466 tests, 157 files); `npm run docs:build` and `npm run docs:validate-links` exit 0. Package check: base `2601bf5` (fresh worktree, `npm ci`, `npm run build`) and head packed with Node 24.22.3 and npm 11.19.1 give 351 file members each, with identical sorted paths, modes and SHA-256. Zero member differences ends the package and TeA check, so TeA was not run.
+
+**After merging main at `be4e0ce` (#232, Story 14.4):** the branch merges `origin/main`. A rebase was turned down because it needs a force-push, which the story rules out. The merge adds the 14.4 spec, the 14.4 ledger line and the epic context edit, and the removal set is unchanged: 55 files and 3,882,133 bytes, 26.3% of the new base.
+
+| Group | Base `be4e0ce` | Head |
+|---|---:|---:|
+| repository | 907 files, 14,753,352 bytes | 853 files, 10,881,615 bytes |
+| `_bmad-output/` | 158 files, 6,757,815 bytes | 104 files, 2,886,078 bytes |
+| `_bmad-output/implementation-artifacts/` | 82 files, 4,432,227 bytes | 28 files, 560,322 bytes |
+| other implementation artifacts | 21 files, 269,127 bytes | 22 files, 279,355 bytes |
+
+`src/`, the kept story files and the rest of the repository match the tables above.
 
 ## Verification
 
@@ -119,3 +130,5 @@ Quick lens, pass 1 (high 0, medium 3, low 3, false 0, maybe-false 0). All patche
 Codex round 1 (high 0, medium 0, low 1, false 0, maybe-false 0). Patched.
 
 - low, patch: the head measure expectation in `## Verification` said every group except `_bmad-output/` and the repository total stays unchanged, while `implementation-artifacts/` drops to 27 files and its other artifacts gain this spec. The expectation now points at the head table and names the groups that change.
+
+Merge of main at `be4e0ce`: the ledger conflict kept both sides (14-2 `done`, 14-3 `review`, 14-4 `review` as #232 set it). The post-merge measure above is new content, so it goes to another Codex round.
