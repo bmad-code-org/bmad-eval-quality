@@ -11,7 +11,7 @@ risk: 'low'
 review: 'quick'
 review_source: 'pinned'
 lenses_ran: ['quick']
-review_loop_iteration: 0
+review_loop_iteration: 1
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -84,13 +84,13 @@ The 55 files and 3,882,133 bytes match the epic's count at `65b24b5`. The reposi
 
 | Group | Files | Bytes |
 |---|---:|---:|
-| repository | 852 | 10,855,216 |
+| repository | 852 | 10,855,765 |
 | `src/` | 145 | 1,346,812 |
-| `_bmad-output/` | 103 | 2,859,679 |
-| `_bmad-output/implementation-artifacts/` | 27 | 533,923 |
+| `_bmad-output/` | 103 | 2,860,228 |
+| `_bmad-output/implementation-artifacts/` | 27 | 534,472 |
 | Epics 1 to 11 story files except 11.1 | 0 | 0 |
 | story files kept (11.1, Epics 12 to 14) | 6 | 280,967 |
-| other implementation artifacts | 21 | 252,956 |
+| other implementation artifacts | 21 | 253,505 |
 | rest of repository | 604 | 6,648,725 |
 
 The other implementation artifacts gain this spec; the learning-path line and the two status edits account for the rest of the `_bmad-output/` difference.
@@ -103,7 +103,7 @@ The other implementation artifacts gain this spec; the learning-path line and th
 - `npm run validate` -- expected: exit 0 (includes `check:docs`, `check:doc-claims`, `check:shareable`).
 - `npm run docs:build && npm run docs:validate-links` -- expected: exit 0.
 - Package check (scratchpad): pack base `2601bf5` from a fresh worktree after `npm ci && npm run build`, pack head the same way with the same Node and npm, then compare sorted member paths, modes and SHA-256 -- expected: zero differences, which ends the package and TeA check.
-- Measure script (scratchpad) at head -- expected: the removed group at 0 files, every other group unchanged except `_bmad-output/` and the repository total.
+- Measure script (scratchpad) at head -- expected: the head table above. The removed group is at 0 files; `src/`, the kept story files and the rest of the repository match base; the repository, `_bmad-output/`, `implementation-artifacts/` and its other artifacts, which gain this spec, change as that table shows.
 
 ## Review Triage Log
 
@@ -115,3 +115,7 @@ Quick lens, pass 1 (high 0, medium 3, low 3, false 0, maybe-false 0). All patche
 - low, patch: spec `status` said in-progress while the ledger said review. Now `built`.
 - low, patch: the ledger marks 14-2 `done` while its spec said `built`. The 14.2 spec now says `done`, as 14.1's does, and the diff-stat criterion names that edit.
 - low, patch: the growth since `65b24b5` was attributed to the wrong files; `epics.md` (+19,968) is the largest share. Corrected.
+
+Codex round 1 (high 0, medium 0, low 1, false 0, maybe-false 0). Patched.
+
+- low, patch: the head measure expectation in `## Verification` said every group except `_bmad-output/` and the repository total stays unchanged, while `implementation-artifacts/` drops to 27 files and its other artifacts gain this spec. The expectation now points at the head table and names the groups that change.
