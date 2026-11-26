@@ -10,6 +10,10 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- The README's authoring discipline says how the seven rules apply to a skill that writes documents. The seven rules map to three checks, which are exclusion, negative inputs, and reading back the artifact the skill wrote, and each check names the rules it carries.
+
 ## [10.1.1] - 2026-11-23
 
 ### Fixed
