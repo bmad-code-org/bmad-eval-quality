@@ -1,5 +1,7 @@
 # eval-quality learning path
 
+The story records of Epics 1 to 11, except Story 11.1, are in history at tag `v10.1.1`: read one with `git show v10.1.1:_bmad-output/implementation-artifacts/<file>`.
+
 One step per finished story. Jump to the one you need.
 Short version here. The long reasoning lives in the code comments each step points at.
 `AD-N` below cites decision N in the architecture spine (`ARCHITECTURE-SPINE.md`, grep for the number);
