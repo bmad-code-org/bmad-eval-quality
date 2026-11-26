@@ -2,9 +2,9 @@
 title: 'The skill tutorial shows its result first'
 type: 'chore'
 created: '2026-11-26'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_commit: '2f045fc41fe984475d9607fbbb367f55a272c70c'
+baseline_commit: '88cda5c' # planned at 2f045fc on the epic branch; rebased onto its squash merge 88cda5c, an identical tree
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -35,7 +35,7 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 
 ## Code Map
 
-- `docs/how-to/evaluate-skill-behavior.md` -- the only content change. Opener lines 8–40. Runner pairs at 93, 103, 117. Rule-check table 129–134 duplicates the new result table. Internals in the lab: twin-run callout and diagram 57–84, demonstration-vs-replay callout 160, preflight explanation 194–206, honest read 235–247, degenerate read 278–286, AD-40 paragraph 309–314. Reference sections 334–538.
+- `docs/how-to/evaluate-skill-behavior.md` -- the only content change. Line numbers are positions in the base file. Opener lines 8–40. Runner pairs at 93, 103, 117. Rule-check table 129–134 duplicates the new result table. Internals in the lab: twin-run callout and diagram 57–84, demonstration-vs-replay callout 160, preflight explanation 194–206, honest read 235–247, degenerate read 278–286, AD-40 paragraph 309–314. Reference sections 334–538.
 - `eval-quality.config.json:1047` -- `lists` entry, pins "`compile` accepts … and rejects a contract declaring" (line 14, opener, unchanged).
 - `eval-quality.config.json:1290,1301,1312` -- `intro` entries: "This interface parses against the published `EvalContract` schema", "The inclusion half says the run named everything the rules mandate:", "The exclusion half is what rejects it:". Each must stay directly above its fenced example.
 - `eval-quality.config.json:1570,1602` -- `text` entries, values from `scripts/doc-claim-sources.ts` (`skillDefectVector`, `skillCorpusDigest`); the strings must stay on the page.
@@ -51,12 +51,14 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 
 **Acceptance Criteria:**
 - Given the reordered page, when read top to bottom, then the result table is the first content after the opener and the opener's text is byte-identical to base.
-- Given `git diff 2f045fc -- examples/tutorials/skill scripts/generate-tutorials.ts scripts/tutorial-target.ts website`, when run, then it is empty.
+- Given `git diff 88cda5c -- examples/tutorials/skill scripts/generate-tutorials.ts scripts/tutorial-target.ts website`, when run, then it is empty.
 - Given `npm run validate`, `npm run docs:build` and `npm run docs:validate-links`, when run, then all exit 0.
+- Given the page's bash fences run in order from a built checkout into a directory that did not exist before the run, when the evidence JSON that run wrote is read, then every command exits 0, every readback matches its transcript, and the rows of the result table hold.
+- Given the page, when inspected, then each `intro`-pinned sentence sits directly above its example, the three `expect-exit: 0` pairs keep one invocation and their `text` block with blank lines only between, and the page says both arms come back `CONCERNS`.
 
 ## Design Notes
 
-Anchors are kept: demoting `##` to `###` keeps each heading's slug, and no page links into this page by anchor. The result table states values the fresh run reads back: honest `O-001`/`O-002` `passed-clean-control held`; degenerate `O-001 confirmed held`, `O-002 caught violated`.
+Anchors: demoting `##` to `###` keeps each reference heading's slug, and no other page links into this page by anchor. Two lab slugs change, because the content under them changed: `6. The lesson, in two rows` is now `6. The lesson` (its two-row block became the result table), and the `####` subheadings inside steps 3 to 5 moved to Advanced under new names. The page's own `[Advanced](#advanced)` link resolves against `## Advanced`; `docs:validate-links` does not check bare `#anchor` links (deferred). The result table states values the fresh run reads back: honest `O-001`/`O-002` `passed-clean-control held`; degenerate `O-001 confirmed held`, `O-002 caught violated`.
 
 ## Verification
 
@@ -64,3 +66,39 @@ Anchors are kept: demoting `##` to `###` keeps each heading's slug, and no page 
 - `npm run validate` -- expected: exit 0.
 - `npm run docs:build && npm run docs:validate-links` -- expected: exit 0.
 - Fresh-run script (scratchpad): extract the page's bash fences after `npm run build`, rewrite `/tmp/eval-quality-skill` to a new `mktemp -d`, run them in order, then read both evidence artifacts and assert the matrix rows -- expected: all assertions pass.
+
+**Evidence (fresh run, 2026-11-26, after the rebase onto `88cda5c`):** all 12 page commands exited 0 into a new `mktemp -d` directory, and all 6 transcripts matched. The evidence read back: honest `O-001` and `O-002` `passed-clean-control held`; degenerate `O-001 confirmed held`, `O-002 caught violated`; degenerate gameability `{"caught":1,"exercised":1,"rate":1}`; `contractVerdict` `CONCERNS`, `exitCode` `0` on both arms; `excludedProbeIds` empty on both. A copy of the degenerate probe with its selector key misspelled exits `3` from `score` and writes no artifact, so a written artifact means the probe qualified.
+
+**CHANGELOG:** no entry. The page is not a package member, and the epic ties its one `[Unreleased]` entry to Story 14.2's README sentence.
+
+## Suggested Review Order
+
+**Result first**
+
+- Entry point: the engine's states for both arms, right after the unchanged opener.
+  [`evaluate-skill-behavior.md:42`](../../docs/how-to/evaluate-skill-behavior.md#L42)
+
+- Qualification and verdict stated, each traceable to a field the run writes.
+  [`evaluate-skill-behavior.md:51`](../../docs/how-to/evaluate-skill-behavior.md#L51)
+
+**Executable path**
+
+- Empty output directory, so a missing producer fails at once.
+  [`evaluate-skill-behavior.md:68`](../../docs/how-to/evaluate-skill-behavior.md#L68)
+
+- Oracle meanings kept where the contract is compiled.
+  [`evaluate-skill-behavior.md:115`](../../docs/how-to/evaluate-skill-behavior.md#L115)
+
+- Qualification read from the artifact's existence; `contractVerdict` named.
+  [`evaluate-skill-behavior.md:221`](../../docs/how-to/evaluate-skill-behavior.md#L221)
+
+**Advanced**
+
+- One heading holds the stage internals, then the author reference.
+  [`evaluate-skill-behavior.md:245`](../../docs/how-to/evaluate-skill-behavior.md#L245)
+
+- AD-40 pairing paragraph, moved verbatim with its antecedent made explicit.
+  [`evaluate-skill-behavior.md:324`](../../docs/how-to/evaluate-skill-behavior.md#L324)
+
+- Scope boundary now closes "What you are evaluating".
+  [`evaluate-skill-behavior.md:350`](../../docs/how-to/evaluate-skill-behavior.md#L350)

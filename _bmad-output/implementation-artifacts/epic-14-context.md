@@ -21,7 +21,7 @@
 - **No history rewrite and no force-push.** Each story is one pull request that reverts on its own.
 - **No change to TeA's** fixtures, baselines, scoring policy or release wiring. Nothing is sent to another repository (BMAD-METHOD, TeA) without the owner's decision; upstream reports wait for the later deferred pull request.
 - **Size claims are checkout-only.** Report tracked bytes and file counts by group at base and head. Make no statement about installed size.
-- **Only one published byte change in the epic**: the README sentence in Story 14.2. `CHANGELOG.md` `[Unreleased]` records it, and the shareable README export is rebuilt in the same commit.
+- **Only one published package byte change in the epic** (the npm package members; documentation pages are not members): the README sentence in Story 14.2. `CHANGELOG.md` `[Unreleased]` records it, and the shareable README export is rebuilt in the same commit.
 - **Gates that must be green**: `npm run validate`, the docs build and link job, and every pull-request canary. Story-specific canaries are `canary-tutorials` and `canary-shareable`.
 - **Fresh-run verification beats green gates.** A reused output directory hides a missing producer, and the tutorial canary skips the page's readback assertions. So the tutorial is verified by running the documented chain from a built checkout into an empty output directory and reading the values from the JSON that run wrote.
 - **Evidence about another repository** holds commands with placeholders, exit codes and checked excerpts, and carries no absolute or machine-specific path.

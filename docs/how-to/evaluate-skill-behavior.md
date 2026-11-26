@@ -41,7 +41,7 @@ You will run the selector runner locally to generate honest and degenerate outpu
 
 ## The result
 
-Scored against the same contract, the honest reply and the degenerate reply split on the exclusion oracle:
+The opener's PASS and FAIL, as the engine records them when it scores each reply against the same contract. Each cell judges the reply, and the two arms split on the exclusion oracle:
 
 | Oracle | Honest arm | Degenerate arm |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ Scored against the same contract, the honest reply and the degenerate reply spli
 | Exclusion `O-002` | passes: `passed-clean-control`, `held` | fails: `caught`, `violated` |
 
 The degenerate arm's gameability probe qualified, and its vector reads `{"caught":1,"exercised":1,"rate":1}`: the probe was exercised once, and the exclusion oracle caught the shortcut.
-Both arms come back `CONCERNS` at exit `0`, on two coverage gaps and a trial count below the policy minimum of 3, which are findings about the contract.
+Both arms come back `CONCERNS` at exit `0`, on two coverage gaps, which are findings about the contract, and on a trial count below the policy minimum of 3, because each score supplies one record.
 
 The mini-lab below reproduces this table, and [Advanced](#advanced) explains each stage that produces it.
 
@@ -64,8 +64,8 @@ npm ci
 npm run build
 ```
 
-Every command below writes into `/tmp/eval-quality-skill`, and that directory has to start empty.
-Delete it first if an earlier run left it behind, so a step whose input no earlier step produced fails at once.
+Every command below that takes `--out` writes into `/tmp/eval-quality-skill`, and that directory has to start empty.
+If an earlier run left it behind, delete it first with `rm -rf /tmp/eval-quality-skill`, so a step whose input no earlier step produced fails at once.
 
 ```bash
 mkdir -p /tmp/eval-quality-skill
@@ -120,9 +120,12 @@ The contract is `corpus/dev/contracts/checklist-selection.json`, published in th
 node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out /tmp/eval-quality-skill/eval-contract.json
 ```
 
-Exit `0`. The contract declares two behaviors over the frontend case, each with one oracle: `O-001` for inclusion and `O-002` for exclusion.
+Exit `0`. The contract declares two behaviors over the frontend case, each with exactly one oracle:
 
-### 3. Preflight both arms
+* **O-001 (inclusion):** the selection named everything the rules mandate.
+* **O-002 (exclusion):** the selection named nothing the rules forbid.
+
+### 3. Preflight
 
 Both arms are pre-flighted against the same committed observations:
 
@@ -144,7 +147,7 @@ node dist/cli/main.js preflight \
   --out /tmp/eval-quality-skill/degenerate-preflight-verdict.json
 ```
 
-Both exit `0`, over four legs:
+Both exit `0`, over four legs. The honest arm's verdict reads:
 
 ```bash
 node -e "const v=require('/tmp/eval-quality-skill/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
@@ -185,7 +188,7 @@ O-002 passed-clean-control held agrees
 {"defect":null,"gameability":null,"zero-action":null}
 ```
 
-Both oracles held. The clean-control probe contributes `null` to every strength component, and the verdict is `CONCERNS` at exit `0`.
+Both oracles held. The clean-control probe contributes `null` to every strength component, and the artifact's `contractVerdict` field reads `CONCERNS`, with `exitCode` `0`.
 
 ### 5. Score the degenerate reply
 
@@ -214,7 +217,8 @@ O-002 caught violated agrees
 {"defect":null,"gameability":{"caught":1,"exercised":1,"rate":1},"zero-action":null}
 ```
 
-The inclusion oracle held over a reply that named everything, and the exclusion oracle caught it. The verdict is still `CONCERNS` at exit `0`.
+The inclusion oracle held over a reply that named everything, and the exclusion oracle caught it.
+The artifact exists, so the gameability probe qualified: `score` rejects an unqualified probe at exit `3` and writes no artifact. Its `contractVerdict` still reads `CONCERNS`, with `exitCode` `0`.
 
 ### 6. The lesson
 
@@ -229,16 +233,18 @@ The contract earns its `gameability` rate of `1` because O-002 exists, and the s
 * Clean controls verify baseline operation without false alarms; they contribute `null` to the strength vector rather than a zero detection rate.
 * Gameability probes qualify shortcut responses without mutating source code (`defects: []`).
 * Preflight verifies environment measurability and input sensitivity; it does not prove LLM comprehension.
-* The evaluation caught the gameability defect (rate 1.0) while the contract overall earned `CONCERNS` due to coverage gaps and trial count.
+* The evaluation caught the gameability defect (rate `1`) while the contract overall earned `CONCERNS` due to coverage gaps and trial count.
 * Fragment selection measures a specific selection decision; it does not establish overall workflow correctness.
 
 ---
 
 > **You can stop here if you only wanted the hands-on tutorial.**
 >
-> The Advanced section below explains each stage of the lab and holds the reference material for authors building skill evaluation contracts: response channels, artifact restrictions, interface declarations, and gameability qualification.
+> The Advanced section below explains each stage of the lab, then holds the reference material for authors building skill evaluation contracts: response channels, artifact restrictions, interface declarations, and gameability qualification.
 
 ## Advanced
+
+The first six subsections explain the stages of the lab above. The rest, from "What you are evaluating" on, is reference for authors writing a skill contract.
 
 ### Twin runs and this mini-lab
 
@@ -277,7 +283,7 @@ This mini-lab
 
 ### What preflight established
 
-Both arms are pre-flighted against the same observations, because pre-flight asks about the environment rather than about either reply.
+Pre-flight asks about the environment rather than about either reply, which is why both arms share one set of observations.
 
 ```text
 Interface present (run-skill):               YES
@@ -303,7 +309,7 @@ Environment fit to score:                    YES
   coverage gap sibling-cross-check unsatisfied at or above the severity floor
   1 completed trials below the declared minimum of 3
   ```
-* **Interpretation:** The honest reply was evaluated correctly. The contract-level `CONCERNS` verdict reflects structural properties of the contract itself: two unsatisfied coverage gaps and a trial count below the policy's minimum of 3.
+* **Interpretation:** The honest reply was evaluated correctly. The contract-level `CONCERNS` verdict reflects two unsatisfied coverage gaps, which are structural properties of the contract itself, and a trial count below the policy's minimum of 3, because the command supplies one record.
 
 ### Reading the degenerate score
 
@@ -317,7 +323,7 @@ Environment fit to score:                    YES
 
 ### One behavior, one oracle
 
-The discipline that makes this work is narrow and it is enforced in code:
+The discipline that makes the exclusion oracle's catch attributable is narrow and it is enforced in code:
 
 ```text
 one behavior
@@ -332,8 +338,6 @@ A caller who names the oracle with `score --designated-oracle <O-id>` replaces t
 That is why inclusion and exclusion are two behaviors here rather than two operands under one `all`.
 In this implementation's attribution mechanism, this 1:1 pairing ensures detection credit is unambiguously attributed. It is an engineering requirement of eval-quality's attribution and scoring engine rather than a universal rule for all test design.
 
-> **Scope boundary:** Fragment selection measures a specific selection decision. It does not establish the correctness of every final artifact produced by a complete workflow downstream.
-
 ### What you are evaluating
 
 The process you observe belongs to the agent, and the skill leaves no separate trace in it.
@@ -342,6 +346,8 @@ Attribution is therefore a design problem you solve in the contract before the r
 TEA does this eight times over.
 The skill's job in each of its eight fragment-selection contracts is fragment selection, so the contract asks which fragments the run selected.
 The agent is free to phrase its reasoning any way it likes; the list it names is the skill's rules applied, and an item in that list the rules exclude is the skill's defect.
+
+> **Scope boundary:** Fragment selection measures a specific selection decision. It does not establish the correctness of every final artifact produced by a complete workflow downstream.
 
 ### What the run has to give you
 
