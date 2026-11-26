@@ -39,6 +39,20 @@ This walkthrough uses a deterministic selector runner as a stand-in for an agent
 
 You will run the selector runner locally to generate honest and degenerate outputs, compile the contract, run preflight checks against committed observations, and score two separate committed records: an honest clean-control record and a degenerate gameability record.
 
+## The result
+
+The opener's PASS and FAIL, as the engine records them when it scores each reply against the same contract. Each cell judges the reply, and the two arms split on the exclusion oracle:
+
+| Oracle | Honest arm | Degenerate arm |
+| --- | --- | --- |
+| Inclusion `O-001` | passes: `passed-clean-control`, `held` | passes: `confirmed`, `held` |
+| Exclusion `O-002` | passes: `passed-clean-control`, `held` | fails: `caught`, `violated` |
+
+The degenerate arm's gameability probe qualified, and its vector reads `{"caught":1,"exercised":1,"rate":1}`: the probe was exercised once, and the exclusion oracle caught the shortcut.
+Both arms come back `CONCERNS` at exit `0`, on two coverage gaps, which are findings about the contract, and on a trial count below the policy minimum of 3, because each score supplies one record.
+
+The mini-lab below reproduces this table, and [Advanced](#advanced) explains each stage that produces it.
+
 ## The mini-lab
 
 Work from a clone with the binary built:
@@ -50,9 +64,197 @@ npm ci
 npm run build
 ```
 
+Run every command below in one shell.
+The first one makes a fresh, private output directory, and every command after it that writes or reads an output uses that directory.
+Each run of the lab starts from a new empty directory, so a step whose input no earlier step produced fails at once.
+Every use is spelled `${OUT_DIR:?}`, so if the directory was never made the shell refuses the command before anything is written.
+
 ```bash
-mkdir -p /tmp/eval-quality-skill
+OUT_DIR="$(mktemp -d)"
 ```
+
+### 1. Run the skill and read its decision
+
+`examples/tutorials/skill/skill-runner.mjs` is a deterministic stand-in for an agent that loaded a checklist-selection skill.
+It applies the skill's rules to a named case and prints the decision as JSON on standard output.
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/skill/skill-runner.mjs --skill checklist-selection --case frontend
+```
+
+```text
+{"selected":["interaction-rules","timing-rules","quality-rules"]}
+```
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/skill/skill-runner.mjs --skill checklist-selection --case backend
+```
+
+```text
+{"selected":["api-rules","data-rules"]}
+```
+
+Two cases, two selections: the decision follows the skill's rules applied to the case.
+
+Now the degenerate answer, which costs an agent nothing:
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/skill/skill-runner.mjs --skill checklist-selection --case frontend --degenerate
+```
+
+```text
+{"selected":["interaction-rules","timing-rules","quality-rules","api-rules","data-rules","mobile-rules","contract-rules"]}
+```
+
+It names every item in the index, including the three the rules mandate for a frontend case, so an inclusion check alone passes it.
+
+### 2. Compile the contract
+
+The contract is `corpus/dev/contracts/checklist-selection.json`, published in the package.
+
+```bash
+node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out "${OUT_DIR:?}/eval-contract.json"
+```
+
+Exit `0`. The contract declares two behaviors over the frontend case, each with exactly one oracle:
+
+* **O-001 (inclusion):** the selection named everything the rules mandate.
+* **O-002 (exclusion):** the selection named nothing the rules forbid.
+
+### 3. Preflight
+
+Both arms are pre-flighted against the same committed observations:
+
+```bash
+node dist/cli/main.js preflight \
+  --contract corpus/dev/contracts/checklist-selection.json \
+  --probes examples/tutorials/skill/probes.json \
+  --observations examples/tutorials/skill/observations.json \
+  --run-id skill-honest-1 \
+  --out "${OUT_DIR:?}/honest-preflight-verdict.json"
+```
+
+```bash
+node dist/cli/main.js preflight \
+  --contract corpus/dev/contracts/checklist-selection.json \
+  --probes examples/tutorials/skill/probes.json \
+  --observations examples/tutorials/skill/observations.json \
+  --run-id skill-degenerate-1 \
+  --out "${OUT_DIR:?}/degenerate-preflight-verdict.json"
+```
+
+Both exit `0`, over four legs. The honest arm's verdict reads:
+
+```bash
+node -e "const v=require(process.argv[1]);console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)" "${OUT_DIR:?}/honest-preflight-verdict.json"
+```
+
+```text
+passed: true
+interface-present skill-runner run-skill satisfied
+input-sensitivity skill-runner run-skill satisfied
+state-reset null null satisfied
+clean-control null null satisfied
+```
+
+All four checks are satisfied, so the environment is fit to score.
+
+### 4. Score both replies
+
+The honest record is scored with a clean-control probe:
+
+```bash
+node dist/cli/main.js score \
+  --record examples/tutorials/skill/honest-run-record.json \
+  --contract "${OUT_DIR:?}/eval-contract.json" \
+  --probe examples/tutorials/skill/honest-probe.json \
+  --preflight-verdict "${OUT_DIR:?}/honest-preflight-verdict.json" \
+  --policy examples/tutorials/skill/scoring-policy.json \
+  --isolation-manifest examples/tutorials/skill/honest-isolation-manifest.json \
+  --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
+  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
+  --out "${OUT_DIR:?}/honest-evidence-artifact.json"
+```
+
+Same contract, same oracles, a different record and a `gameability` probe:
+
+```bash
+node dist/cli/main.js score \
+  --record examples/tutorials/skill/degenerate-run-record.json \
+  --contract "${OUT_DIR:?}/eval-contract.json" \
+  --probe examples/tutorials/skill/degenerate-probe.json \
+  --preflight-verdict "${OUT_DIR:?}/degenerate-preflight-verdict.json" \
+  --policy examples/tutorials/skill/scoring-policy.json \
+  --isolation-manifest examples/tutorials/skill/degenerate-isolation-manifest.json \
+  --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
+  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
+  --out "${OUT_DIR:?}/degenerate-evidence-artifact.json"
+```
+
+Both exit `0`, and each writes one evidence artifact.
+
+### 5. Read the honest score
+
+```bash
+node -e "const e=require(process.argv[1]);for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))" "${OUT_DIR:?}/honest-evidence-artifact.json"
+```
+
+```text
+O-001 passed-clean-control held agrees
+O-002 passed-clean-control held agrees
+{"defect":null,"gameability":null,"zero-action":null}
+```
+
+Both oracles held. The clean-control probe contributes `null` to every strength component, and the artifact's `contractVerdict` field reads `CONCERNS`, with `exitCode` `0`.
+
+### 6. Read the degenerate score
+
+```bash
+node -e "const e=require(process.argv[1]);for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))" "${OUT_DIR:?}/degenerate-evidence-artifact.json"
+```
+
+```text
+O-001 confirmed held agrees
+O-002 caught violated agrees
+{"defect":null,"gameability":{"caught":1,"exercised":1,"rate":1},"zero-action":null}
+```
+
+The inclusion oracle held over a reply that named everything, and the exclusion oracle caught it.
+The artifact exists, so the gameability probe qualified: `score` rejects an unqualified probe at exit `3` and writes no artifact. Its `contractVerdict` still reads `CONCERNS`, with `exitCode` `0`.
+
+### 7. The lesson
+
+**Gameability means an easy or degenerate strategy can satisfy a weak evaluator.**
+A contract with O-001 alone would have reported this reply as correct, with its inclusion oracle holding.
+The contract earns its `gameability` rate of `1` because O-002 exists, and the scored probe is the proof.
+
+## Key takeaways
+
+* The checklist selector is a deterministic stand-in for an agent applying skill instructions.
+* A degenerate "return everything" response satisfies weak inclusion checks; catching it requires an exclusion oracle.
+* Clean controls verify baseline operation without false alarms; they contribute `null` to the strength vector rather than a zero detection rate.
+* Gameability probes qualify shortcut responses without mutating source code (`defects: []`).
+* Preflight verifies environment measurability and input sensitivity; it does not prove LLM comprehension.
+* The evaluation caught the gameability defect (rate `1`) while the contract overall earned `CONCERNS` due to coverage gaps and trial count.
+* Fragment selection measures a specific selection decision; it does not establish overall workflow correctness.
+
+---
+
+> **You can stop here if you only wanted the hands-on tutorial.**
+>
+> The Advanced section below explains each stage of the lab, then holds the reference material for authors building skill evaluation contracts: response channels, artifact restrictions, interface declarations, and gameability qualification.
+
+## Advanced
+
+The first six subsections explain the stages of the lab above. The rest, from "What you are evaluating" on, is reference for authors writing a skill contract.
+
+### Twin runs and this mini-lab
 
 > **The twin-run discipline vs this mini-lab:** A full twin run evaluates both a clean baseline and an adversarial or mutated arm, asking whether the evaluation discriminates between them. This mini-lab scores an honest clean-control record and a degenerate gameability record against the same Behavioral Evaluation Contract (BEC). A gameability probe qualifies an adversarial or shortcut response without modifying source code, so its `defects` array is empty.
 
@@ -83,115 +285,13 @@ This mini-lab
             Evaluate discrimination
 ```
 
-### 1. Run the skill and read its decision
+### Demonstration input and replay input
 
-> **Question:** What does an honest skill decision look like compared to a degenerate shortcut?
+> **Demonstration vs replay input:** The preflight commands in step 3 consume committed observations (`examples/tutorials/skill/observations.json`). In step 1, the demo runner accepted `--case frontend` for tutorial convenience. In the contract, the prompt is declared on `stdin.prompt`, matching how an evaluation harness feeds prompts to an agent. The committed `observations.json` file records that caller-side construction.
 
-`examples/tutorials/skill/skill-runner.mjs` is a deterministic stand-in for an agent that loaded a checklist-selection skill.
-It applies the skill's rules to a named case and prints the decision as JSON on standard output.
+### What preflight established
 
-<!-- expect-exit: 0 -->
-
-```bash
-node examples/tutorials/skill/skill-runner.mjs --skill checklist-selection --case frontend
-```
-
-```text
-{"selected":["interaction-rules","timing-rules","quality-rules"]}
-```
-
-<!-- expect-exit: 0 -->
-
-```bash
-node examples/tutorials/skill/skill-runner.mjs --skill checklist-selection --case backend
-```
-
-```text
-{"selected":["api-rules","data-rules"]}
-```
-
-Two different cases, two different selections. That difference is the whole reason this is evaluable: the decision is attributable to the skill's rules rather than to anything the agent phrased.
-
-Now the degenerate answer, which costs an agent nothing:
-
-<!-- expect-exit: 0 -->
-
-```bash
-node examples/tutorials/skill/skill-runner.mjs --skill checklist-selection --case frontend --degenerate
-```
-
-```text
-{"selected":["interaction-rules","timing-rules","quality-rules","api-rules","data-rules","mobile-rules","contract-rules"]}
-```
-
-It names every item in the index. Look at it against the honest answer:
-
-```text
-Rule Check              Honest Frontend Reply       Degenerate (All Items)
---------------------------------------------------------------------------
-Inclusion (O-001)       PASSED (names all 3)        PASSED (names all 3!)
-Exclusion (O-002)       PASSED (no forbidden items) FAILED (names forbidden)
-```
-
-The degenerate reply contains all three items the rules mandate for a frontend case (`interaction-rules`, `timing-rules`, `quality-rules`). An evaluation that only asks "did the run select everything it should have?" passes this degenerate answer. Catching the cheat requires an exclusion check that verifies forbidden items are omitted.
-
-### 2. Compile the contract
-
-> **Question:** How does the contract encode both inclusion and exclusion?
-
-The contract is `corpus/dev/contracts/checklist-selection.json`, published in the package.
-
-```bash
-node dist/cli/main.js compile --in corpus/dev/contracts/checklist-selection.json --out /tmp/eval-quality-skill/eval-contract.json
-```
-
-Exit `0`.
-
-It declares two behaviors over the frontend case, each with exactly one oracle:
-* **O-001 (inclusion):** the selection named everything the rules mandate.
-* **O-002 (exclusion):** the selection named nothing the rules forbid.
-
-### 3. Preflight
-
-> **Question:** Is the environment fit to be measured, and do different inputs produce different outputs?
-
-Both arms are pre-flighted against the same observations, because pre-flight asks about the environment rather than about either reply.
-
-> **Demonstration vs replay input:** The preflight commands below consume committed observations (`examples/tutorials/skill/observations.json`). In step 1, the demo runner accepted `--case frontend` for tutorial convenience. In the contract, the prompt is declared on `stdin.prompt`, matching how an evaluation harness feeds prompts to an agent. The committed `observations.json` file records that caller-side construction.
-
-```bash
-node dist/cli/main.js preflight \
-  --contract corpus/dev/contracts/checklist-selection.json \
-  --probes examples/tutorials/skill/probes.json \
-  --observations examples/tutorials/skill/observations.json \
-  --run-id skill-honest-1 \
-  --out /tmp/eval-quality-skill/honest-preflight-verdict.json
-```
-
-```bash
-node dist/cli/main.js preflight \
-  --contract corpus/dev/contracts/checklist-selection.json \
-  --probes examples/tutorials/skill/probes.json \
-  --observations examples/tutorials/skill/observations.json \
-  --run-id skill-degenerate-1 \
-  --out /tmp/eval-quality-skill/degenerate-preflight-verdict.json
-```
-
-Both exit `0`, over four legs:
-
-```bash
-node -e "const v=require('/tmp/eval-quality-skill/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
-```
-
-```text
-passed: true
-interface-present skill-runner run-skill satisfied
-input-sensitivity skill-runner run-skill satisfied
-state-reset null null satisfied
-clean-control null null satisfied
-```
-
-#### What preflight just established
+Pre-flight asks about the environment rather than about either reply, which is why both arms share one set of observations.
 
 ```text
 Interface present (run-skill):               YES
@@ -201,42 +301,15 @@ Clean control (baseline holds):              SATISFIED (null)
 Environment fit to score:                    YES
 ```
 
-`input-sensitivity` is the frontend and backend replies produced in step 1, read as evidence: two prompts differing in one case, and a declared relation saying the two selections have to differ. A skill whose selection is identical whichever case it is given is not reading the case.
+`input-sensitivity` reads the frontend and backend replies recorded in `examples/tutorials/skill/observations.json`, which match the two replies step 1 printed: two prompts differing in one case, and a declared relation saying the two selections have to differ. Preflight reads that recorded file and never runs the runner, so compare its replies with step 1's output when you change either. A skill whose selection is identical whichever case it is given is not reading the case.
 
 > **Attribution boundary:** Showing sensitivity between two test cases in this deterministic fixture proves the environment is measurable and sensitive to inputs. It does not independently prove that a real LLM read a particular instruction or establish the skill's causal contribution against every alternative.
 
-### 4. Score the honest reply
-
-> **Question:** Does an honest reply pass clean controls without falsely inflating the defect catch rate?
-
-```bash
-node dist/cli/main.js score \
-  --record examples/tutorials/skill/honest-run-record.json \
-  --contract /tmp/eval-quality-skill/eval-contract.json \
-  --probe examples/tutorials/skill/honest-probe.json \
-  --preflight-verdict /tmp/eval-quality-skill/honest-preflight-verdict.json \
-  --policy examples/tutorials/skill/scoring-policy.json \
-  --isolation-manifest examples/tutorials/skill/honest-isolation-manifest.json \
-  --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
-  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
-  --out /tmp/eval-quality-skill/honest-evidence-artifact.json
-```
-
-```bash
-node -e "const e=require('/tmp/eval-quality-skill/honest-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
-```
-
-```text
-O-001 passed-clean-control held agrees
-O-002 passed-clean-control held agrees
-{"defect":null,"gameability":null,"zero-action":null}
-```
-
-#### How to read this result
+### Reading the honest score
 
 * **Mode:** `contract-scoring`.
 * **Outcomes:** Both oracles held (`O-001 passed-clean-control`, `O-002 passed-clean-control`). The honest selection satisfies both inclusion and exclusion.
-* **Strength vector:** All three components are `null`. The probe (`honest-probe.json`) is a clean control. Clean controls verify that an evaluation does not raise false alarms against correct behavior; they do not measure defect or gameability catch rates. A `null` entry signifies that no defect or gameability catch was measured in this arm—not a measured rate of zero.
+* **Strength vector:** All three components are `null`. The probe (`honest-probe.json`) is a clean control. Clean controls verify that an evaluation does not raise false alarms against correct behavior; they do not measure defect or gameability catch rates. A `null` entry signifies that no defect or gameability catch was measured in this arm. It is not a measured rate of zero.
 * **Overall contract verdict:** `CONCERNS` (exit code `0`).
 * **Verdict basis:**
   ```text
@@ -244,38 +317,9 @@ O-002 passed-clean-control held agrees
   coverage gap sibling-cross-check unsatisfied at or above the severity floor
   1 completed trials below the declared minimum of 3
   ```
-* **Interpretation:** The honest reply was evaluated correctly. The contract-level `CONCERNS` verdict reflects structural properties of the contract itself: two unsatisfied coverage gaps and a trial count below the policy's minimum of 3.
+* **Interpretation:** The honest reply was evaluated correctly. The contract-level `CONCERNS` verdict reflects two unsatisfied coverage gaps, which are structural properties of the contract itself, and a trial count below the policy's minimum of 3, because the command supplies one record.
 
-### 5. Score the degenerate reply
-
-> **Question:** Does the contract catch the all-items shortcut, and how does gameability scoring reflect it?
-
-Same contract, same oracles, a different record and a `gameability` probe:
-
-```bash
-node dist/cli/main.js score \
-  --record examples/tutorials/skill/degenerate-run-record.json \
-  --contract /tmp/eval-quality-skill/eval-contract.json \
-  --probe examples/tutorials/skill/degenerate-probe.json \
-  --preflight-verdict /tmp/eval-quality-skill/degenerate-preflight-verdict.json \
-  --policy examples/tutorials/skill/scoring-policy.json \
-  --isolation-manifest examples/tutorials/skill/degenerate-isolation-manifest.json \
-  --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
-  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
-  --out /tmp/eval-quality-skill/degenerate-evidence-artifact.json
-```
-
-```bash
-node -e "const e=require('/tmp/eval-quality-skill/degenerate-evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(JSON.stringify(e.strength.vector))"
-```
-
-```text
-O-001 confirmed held agrees
-O-002 caught violated agrees
-{"defect":null,"gameability":{"caught":1,"exercised":1,"rate":1},"zero-action":null}
-```
-
-#### How to read this result
+### Reading the degenerate score
 
 * **Mode:** `contract-scoring`.
 * **Outcomes:**
@@ -285,20 +329,9 @@ O-002 caught violated agrees
 * **Overall contract verdict:** Still `CONCERNS` (exit code `0`), carrying the same contract-level verdict basis (coverage gaps and 1 trial vs minimum of 3).
 * **Two separate conclusions:** The evaluation successfully detected the degenerate shortcut (`caught: 1, rate: 1`), while the contract overall still has coverage gaps and trial shortfalls.
 
-### 6. The lesson, in two rows
+### One behavior, one oracle
 
-Put the degenerate arm's two outcomes side by side:
-
-```text
-O-001 confirmed   the inclusion oracle HELD over a reply that named everything
-O-002 caught      the exclusion oracle is what rejected it
-```
-
-**Gameability means an easy or degenerate strategy can satisfy a weak evaluator.**
-A contract with O-001 alone would have reported this reply as correct, with a clean verdict and an inclusion oracle holding.
-The contract earns its `gameability` rate of `1` because O-002 exists, and the probe is what proves it rather than asserting it.
-
-The discipline that makes this work is narrow and it is enforced in code:
+The discipline that makes the exclusion oracle's catch attributable is narrow and it is enforced in code:
 
 ```text
 one behavior
@@ -313,25 +346,7 @@ A caller who names the oracle with `score --designated-oracle <O-id>` replaces t
 That is why inclusion and exclusion are two behaviors here rather than two operands under one `all`.
 In this implementation's attribution mechanism, this 1:1 pairing ensures detection credit is unambiguously attributed. It is an engineering requirement of eval-quality's attribution and scoring engine rather than a universal rule for all test design.
 
-> **Scope boundary:** Fragment selection measures a specific selection decision. It does not establish the correctness of every final artifact produced by a complete workflow downstream.
-
-## Key takeaways
-
-* The checklist selector is a deterministic stand-in for an agent applying skill instructions.
-* A degenerate "return everything" response satisfies weak inclusion checks; catching it requires an exclusion oracle.
-* Clean controls verify baseline operation without false alarms; they contribute `null` to the strength vector rather than a zero detection rate.
-* Gameability probes qualify shortcut responses without mutating source code (`defects: []`).
-* Preflight verifies environment measurability and input sensitivity; it does not prove LLM comprehension.
-* The evaluation caught the gameability defect (rate 1.0) while the contract overall earned `CONCERNS` due to coverage gaps and trial count.
-* Fragment selection measures a specific selection decision; it does not establish overall workflow correctness.
-
----
-
-> **You can stop here if you only wanted the hands-on tutorial.**
->
-> Everything below is reference material for authors building skill evaluation contracts: response channels, artifact restrictions, interface declarations, and gameability qualification.
-
-## What you are evaluating
+### What you are evaluating
 
 The process you observe belongs to the agent, and the skill leaves no separate trace in it.
 Attribution is therefore a design problem you solve in the contract before the run, and it has one move: name a decision the skill alone owns, and make the run print that decision.
@@ -340,7 +355,9 @@ TEA does this eight times over.
 The skill's job in each of its eight fragment-selection contracts is fragment selection, so the contract asks which fragments the run selected.
 The agent is free to phrase its reasoning any way it likes; the list it names is the skill's rules applied, and an item in that list the rules exclude is the skill's defect.
 
-## What the run has to give you
+> **Scope boundary:** Fragment selection measures a specific selection decision. It does not establish the correctness of every final artifact produced by a complete workflow downstream.
+
+### What the run has to give you
 
 A command operation declares one `responseDescriptor` and a `descriptorChannel` saying which output channel that descriptor describes (`src/core/schemas/interface.ts`).
 The channel is either a stream, `stdout` or `stderr`, or a named artifact the operation writes.
@@ -355,7 +372,7 @@ A defect signature cannot address a file the command wrote.
 The refusal reads the channel of a condition's pointer and never reads the probe's class, so it lands the same way on every probe class.
 A skill whose decision is visible only inside a written file can still carry oracles; it cannot carry any probe whose signature has to address that file, which is what makes those oracles worth trusting.
 
-## Declaring the interface
+### Declaring the interface
 
 The agent-behavior guide covers the general `cli` declaration, including the sensitivity witness every input-bearing operation owes.
 Two fields carry the weight for a skill.
@@ -428,7 +445,7 @@ This interface parses against the published `EvalContract` schema and compiles a
 The contract declares the case on `stdin`, where a real harness puts the rules and the case together in one prompt.
 The lab's runner takes `--case` as an option instead, because a documented command that pipes its input cannot be executed by this repository's own invocation gate. The recorded `callInputs.stdin.prompt` in both run records carries the prompt the contract's plan binds.
 
-## Writing an oracle about a skill
+### Writing an oracle about a skill
 
 A skill-level claim names the decision and the input that should have produced it.
 Every case needs two of them, because either one alone is trivially satisfiable.
@@ -482,9 +499,9 @@ The exclusion half is what rejects it:
 Each half gets its own behavior, so each has exactly one oracle and each can be the designated oracle of a probe.
 TEA's eight contracts declare 48 behaviors and 48 oracles over 24 cases: the same case read twice, all the way down.
 
-## Gameability probes
+### Gameability probes
 
-`probeClass: "gameability"` is the probe the lab scored in step 5, and its shape is worth knowing.
+`probeClass: "gameability"` is the probe the lab scored in step 4, and its shape is worth knowing.
 
 AD-9's gameability route qualifies a response, so the probe seeds no defect: `defects` is empty, and `admissibleRoutes` in `src/core/score/qualification.ts` admits the `gameability` route for that class and no other.
 The route's record carries three fields (`src/core/schemas/probe-qualification.ts`): `degenerateResponse`, which describes the reply in prose because AD-8 keeps sealed-case content out of every artifact, and `naiveOracleSatisfiedEvidence` and `disciplinedOracleRejectedEvidence`, the two artifact references showing it passed one oracle and failed the other.
@@ -510,7 +527,7 @@ The gate executes inside `score`, and `runScore` returns its `QualificationResul
 A rejected probe resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle, and that state lands the run on the Invalid rung: exit `3`, no artifact written, and the reasons on stderr.
 Stderr carries the qualification lines first and then the Invalid basis as `eval-quality: invalid: <reason>`, including one `oracle <id> resolved infrastructure-error` reason per oracle the rejection resolved.
 
-## Where this stands
+### Where this stands
 
 The lab above is the proof, and you can re-run it: the `cli` interface kind carries a skill's decision, the two-oracle case discriminates, and the gameability probe qualifies and scores against a published contract.
 Both arms come back CONCERNS at exit `0`, on two coverage gaps and the trial-set shortfall, and the coverage gaps are findings about the contract rather than about the replies.
@@ -523,7 +540,7 @@ The lab reports one structural limit: a skill whose only deliverable is a writte
 
 Each runnable score command above supplies one record, so each strength vector reports one completed trial. Repeat `--record` to meet the policy minimum. Every record carries a distinct `trialIndex`; every record agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
 
-## In BMAD terms
+### In BMAD terms
 
 TEA ships eight fragment-selection contracts under `test/contracts/fragment-selection/`, one per workflow skill that carries a knowledge index: `atdd`, `automate`, `ci`, `framework`, `nfr`, `test-design`, `test-review`, and `trace`.
 

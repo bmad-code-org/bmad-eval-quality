@@ -326,3 +326,11 @@ The other half of AD-17 stays outside this package and is stated in
 criterion is one the cited rubric declares needs the rubric artifact, no stage
 row names it as an input, and the check is the caller's on the same terms AD-12
 already states for the remediation cap.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-1-the-skill-tutorial-shows-its-result-first.md`
+  summary: No gate compares the skill tutorial's `node -e` readback transcripts, or its result table, with what `score` writes.
+  evidence: `check:doc-invocations` compares a transcript only after an `expect-exit` fence whose command matches a declared spelling, and `node -e` is none; `check:tutorials` holds the inputs under `examples/tutorials/skill/` and never the scored artifacts. An engine change that moved `O-002` off `caught violated` would leave every gate green.
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-1-the-skill-tutorial-shows-its-result-first.md`
+  summary: `docs:validate-links` skips bare same-page `#anchor` links.
+  evidence: `LINK_REGEX` in `tools/validate-doc-links.js:11` matches only hrefs starting with `./`, `../` or `/`, or containing `.md`, so `[Advanced](#advanced)` and `docs/how-to/evaluate-tool-use-behavior.md:38` are unchecked.
+
