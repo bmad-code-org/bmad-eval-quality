@@ -11,7 +11,7 @@ risk: 'low'
 review: 'quick'
 review_source: 'pinned'
 lenses_ran: ['quick']
-review_loop_iteration: 1
+review_loop_iteration: 2
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -58,7 +58,7 @@ context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.
 - [x] `_bmad-output/implementation-artifacts/spec-14-2-the-readme-maps-the-seven-rules-to-a-prose-skill.md` -- `status: 'done'`, matching the ledger as 14.1's spec does.
 
 **Acceptance Criteria:**
-- Given `git diff 2601bf5 --stat`, when read, then it shows the 55 deletions, the learning-path line, the ledger lines, the 14.2 spec status and this spec, and nothing else.
+- Given `git diff be4e0ce --stat` (the PR base after main was merged in), when read, then it shows the 55 deletions, the learning-path line, the ledger lines, the 14.2 spec status and this spec, and nothing else.
 - Given `npm run validate`, `npm run docs:build` and `npm run docs:validate-links`, when run, then all exit 0 with no gate, configuration entry or fixture changed.
 
 ## Implementation Notes
@@ -101,19 +101,19 @@ The other implementation artifacts gain this spec; the learning-path line and th
 
 | Group | Base `be4e0ce` | Head |
 |---|---:|---:|
-| repository | 907 files, 14,753,352 bytes | 853 files, 10,881,615 bytes |
-| `_bmad-output/` | 158 files, 6,757,815 bytes | 104 files, 2,886,078 bytes |
-| `_bmad-output/implementation-artifacts/` | 82 files, 4,432,227 bytes | 28 files, 560,322 bytes |
-| other implementation artifacts | 21 files, 269,127 bytes | 22 files, 279,355 bytes |
+| repository | 907 files, 14,753,352 bytes | 853 files, 10,882,262 bytes |
+| `_bmad-output/` | 158 files, 6,757,815 bytes | 104 files, 2,886,725 bytes |
+| `_bmad-output/implementation-artifacts/` | 82 files, 4,432,227 bytes | 28 files, 560,969 bytes |
+| other implementation artifacts | 21 files, 269,127 bytes | 22 files, 280,002 bytes |
 
-`src/`, the kept story files and the rest of the repository match the tables above.
+`src/`, the kept story files and the rest of the repository match the tables above. Package check at the new base: `be4e0ce` (fresh worktree, `npm ci`, `npm run build`) and head packed with Node 24.22.3 and npm 11.19.1 give 351 file members each, with identical sorted paths, modes and SHA-256. The `2601bf5` evidence above is the pre-merge run.
 
 ## Verification
 
 **Commands:**
 - `npm run validate` -- expected: exit 0 (includes `check:docs`, `check:doc-claims`, `check:shareable`).
 - `npm run docs:build && npm run docs:validate-links` -- expected: exit 0.
-- Package check (scratchpad): pack base `2601bf5` from a fresh worktree after `npm ci && npm run build`, pack head the same way with the same Node and npm, then compare sorted member paths, modes and SHA-256 -- expected: zero differences, which ends the package and TeA check.
+- Package check (scratchpad): pack base `be4e0ce` from a fresh worktree after `npm ci && npm run build`, pack head the same way with the same Node and npm, then compare sorted member paths, modes and SHA-256 -- expected: zero differences, which ends the package and TeA check.
 - Measure script (scratchpad) at head -- expected: the head table above. The removed group is at 0 files; `src/`, the kept story files and the rest of the repository match base; the repository, `_bmad-output/`, `implementation-artifacts/` and its other artifacts, which gain this spec, change as that table shows.
 
 ## Review Triage Log
@@ -132,3 +132,7 @@ Codex round 1 (high 0, medium 0, low 1, false 0, maybe-false 0). Patched.
 - low, patch: the head measure expectation in `## Verification` said every group except `_bmad-output/` and the repository total stays unchanged, while `implementation-artifacts/` drops to 27 files and its other artifacts gain this spec. The expectation now points at the head table and names the groups that change.
 
 Merge of main at `be4e0ce`: the ledger conflict kept both sides (14-2 `done`, 14-3 `review`, 14-4 `review` as #232 set it). The post-merge measure above is new content, so it goes to another Codex round.
+
+Codex round 3 (high 0, medium 1, low 0, false 0, maybe-false 0). Patched.
+
+- medium, patch: the diff-stat criterion and the package-check command still named the pre-merge base `2601bf5`, so the diff they describe also lists #232's files. Both now name `be4e0ce`, and the post-merge package comparison is recorded beside the post-merge measure.
