@@ -301,7 +301,7 @@ Clean control (baseline holds):              SATISFIED (null)
 Environment fit to score:                    YES
 ```
 
-`input-sensitivity` is the frontend and backend replies produced in step 1, read as evidence: two prompts differing in one case, and a declared relation saying the two selections have to differ. A skill whose selection is identical whichever case it is given is not reading the case.
+`input-sensitivity` reads the frontend and backend replies recorded in `examples/tutorials/skill/observations.json`, which match the two replies step 1 printed: two prompts differing in one case, and a declared relation saying the two selections have to differ. Preflight reads that recorded file and never runs the runner, so compare its replies with step 1's output when you change either. A skill whose selection is identical whichever case it is given is not reading the case.
 
 > **Attribution boundary:** Showing sensitivity between two test cases in this deterministic fixture proves the environment is measurable and sensitive to inputs. It does not independently prove that a real LLM read a particular instruction or establish the skill's causal contribution against every alternative.
 
