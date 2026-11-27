@@ -239,9 +239,11 @@ describe('the digest agreement over rendered output', () => {
 		// lines. The README renders them as a markdown table and backticks the
 		// flag names, so the comparison strips backticks and goes per row: the
 		// code, then the words beside it. The formatter pads every cell to its
-		// column's width, so a row is compared by its trimmed cells. Each cell is
-		// trimmed before its backticks go, so whitespace written inside a code
-		// span, which renders, still fails the comparison.
+		// column's width, so a row is compared by its cells with that padding
+		// removed. Only ASCII spaces and tabs are padding: a non-breaking space
+		// renders as cell content. Padding goes before the backticks, so
+		// whitespace written inside a code span, which renders, still fails the
+		// comparison.
 		const rows = EXIT_CODE_TABLE.split('\n')
 			.map((line) => line.match(/^ {2}(\d+) {2,}(.+)$/))
 			.filter((match): match is RegExpMatchArray => match !== null)
@@ -253,7 +255,9 @@ describe('the digest agreement over rendered output', () => {
 				line
 					.slice(1, -1)
 					.split('|')
-					.map((cell) => cell.trim().replaceAll('`', ''))
+					.map((cell) =>
+						cell.replace(/^[ \t]+|[ \t]+$/g, '').replaceAll('`', ''),
+					)
 					.join(' | '),
 			)
 		for (const [, code, text] of rows) {
