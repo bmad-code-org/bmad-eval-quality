@@ -24,21 +24,20 @@ release is collected in the last two sections.
 > (manual, npm-owner-only) or **Section 12 (v1 entry criteria)**, which proceeds in the `bmad-tea`
 > repository against this released v0.
 
-
 ## 1. The surface v0 qualifies
 
 `package.json` declares the shipped surface. Qualification covers this and stops there.
 
-| Surface | Value |
-| --- | --- |
-| Package name | `eval-quality` |
-| Root entry | `eval-quality` resolves to `dist/index.js` |
-| Adapters subpath | `eval-quality/adapters` resolves to `dist/adapters/index.js` |
+| Surface             | Value                                                          |
+| ------------------- | -------------------------------------------------------------- |
+| Package name        | `eval-quality`                                                 |
+| Root entry          | `eval-quality` resolves to `dist/index.js`                     |
+| Adapters subpath    | `eval-quality/adapters` resolves to `dist/adapters/index.js`   |
 | Conformance subpath | `eval-quality/conformance` resolves to `dist/testing/index.js` |
-| Asset subpaths | `eval-quality/schemas/*`, `eval-quality/corpus/*` |
-| Binary | `eval-quality` resolves to `dist/cli/main.js` |
-| Commands | `compile`, `seal`, `preflight` |
-| Published files | `dist`, `schemas`, `corpus`, `README.md`, `LICENSE` |
+| Asset subpaths      | `eval-quality/schemas/*`, `eval-quality/corpus/*`              |
+| Binary              | `eval-quality` resolves to `dist/cli/main.js`                  |
+| Commands            | `compile`, `seal`, `preflight`                                 |
+| Published files     | `dist`, `schemas`, `corpus`, `README.md`, `LICENSE`            |
 
 Scoring is outside v0. `src/cli/render.ts` records in its exit-code table that codes 1 and 2 report
 a scored verdict, that scoring ships in a later release, and that no command in this binary reaches
@@ -100,12 +99,12 @@ Runs `vitest run tests/adapters tests/testing`: the four conformance runners pub
 
 `src/testing/index.ts` exports four runners.
 
-| Runner | Signature | Outcomes |
-| --- | --- | --- |
-| `runCorpusPortConformance` | `(subject: PortSubject<CorpusResolveRequest>) => Promise<ConformanceReport>` | 6 |
-| `runClockPortConformance` | `(subject: PortSubject<ClockReadRequest>) => Promise<ConformanceReport>` | 6 |
-| `runFileSystemPortConformance` | `(readSubject: PortSubject<FileReadRequest>, writeSubject: PortSubject<FileWriteRequest>) => Promise<ConformanceReport>` | 12 |
-| `runEnvironmentProbePortConformance` | `(subject: ProbeSubject) => Promise<ConformanceReport>` | 19 |
+| Runner                               | Signature                                                                                                                | Outcomes |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | -------- |
+| `runCorpusPortConformance`           | `(subject: PortSubject<CorpusResolveRequest>) => Promise<ConformanceReport>`                                             | 6        |
+| `runClockPortConformance`            | `(subject: PortSubject<ClockReadRequest>) => Promise<ConformanceReport>`                                                 | 6        |
+| `runFileSystemPortConformance`       | `(readSubject: PortSubject<FileReadRequest>, writeSubject: PortSubject<FileWriteRequest>) => Promise<ConformanceReport>` | 12       |
+| `runEnvironmentProbePortConformance` | `(subject: ProbeSubject) => Promise<ConformanceReport>`                                                                  | 19       |
 
 Total: 43 outcomes. The numbers come from `CONFORMANCE_OUTCOME_COUNTS` in
 `src/testing/conformance.ts`, and the source agrees with them: the shared assertion set emits six

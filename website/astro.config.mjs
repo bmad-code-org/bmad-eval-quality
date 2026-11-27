@@ -51,8 +51,6 @@ export default defineConfig({
 		starlight({
 			title: 'eval-quality',
 			favicon: '/favicon.svg',
-			tagline:
-				'Compile disciplined Behavioral Evaluation Contracts and score their ability to catch known defects.',
 			defaultLocale: 'root',
 			social: [
 				{

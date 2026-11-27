@@ -10,6 +10,10 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the Zod runtime dependency from 4.6.6 to 4.6.7. Published schemas, the corpus, and every artifact stay byte-identical.
+
 ## [10.1.2] - 2026-11-26
 
 ### Changed
@@ -1318,7 +1322,7 @@ before publishing, so the 0.4.0 changes below shipped in this version.
 - **BREAKING** The sealed run record's `schemaVersion` is 4 and the probe's is 3. The record retypes
   `stdout`, `stderr`, and `callInputs` and adds `artifacts` and `principal`; the probe retypes its
   defect signature and widens the signature selector's input binding.
-- `seal` calls a command a command. Every operation rendered to an evaluator as "the *n* endpoint",
+- `seal` calls a command a command. Every operation rendered to an evaluator as "the _n_ endpoint",
   which told the evaluator something false about what it was reading, and the noun follows the kind
   now. The brief's own shape is unchanged and takes no bump.
 - Two hand-maintained channel sets in qualification are derived from the channel vocabulary rather
@@ -1564,7 +1568,7 @@ before publishing, so the 0.4.0 changes below shipped in this version.
   - **BREAKING** evidence artifact **1 → 3**. `ScoringVersionInputs` gained a required sixth field,
     `mode`. Then the contract-scoring branch gained a required `uncitedFindingGaps` array, where
     `[]` is legal and the key itself is what is mandatory. That second bump is branch-scoped: a
-    version-2 *production* evidence artifact still parses under version 3, since the production
+    version-2 _production_ evidence artifact still parses under version 3, since the production
     branch never carries the key.
   - **BREAKING** sealed evaluator brief **1 → 2**. `principals` became required, carrying the
     contract's `testData.principals` names, sorted, as opaque labels with no credential value. It is
@@ -1593,7 +1597,7 @@ before publishing, so the 0.4.0 changes below shipped in this version.
   its own parent on AD-29's mint path and throws a `TypeError`, so it is a programmer-error guard in
   neither code registry and never sees a caller's ingest. Both directions follow from that absence.
   An
-  artifact carrying a *higher* `schemaVersion` than the reader expects, but the right fields, parses
+  artifact carrying a _higher_ `schemaVersion` than the reader expects, but the right fields, parses
   and is accepted silently. So does a stale stamp in the other direction, and the package ships
   twenty live examples of it: the nineteen contracts under `corpus/dev/contracts/` and
   `corpus/dev/compile-seal-example/contract.json` each carry `schemaVersion: 1` against an

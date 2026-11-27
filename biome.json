@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -48,6 +48,14 @@
 		}
 	},
 	"overrides": [
+		{
+			"includes": [".github/ISSUE_TEMPLATE/*.md"],
+			"markdown": {
+				"formatter": {
+					"enabled": false
+				}
+			}
+		},
 		{
 			"includes": ["**/*.astro"],
 			"linter": {
@@ -104,6 +112,11 @@
 			}
 		}
 	],
+	"markdown": {
+		"formatter": {
+			"formatEmbeds": false
+		}
+	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "single",

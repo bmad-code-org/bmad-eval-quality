@@ -60,16 +60,16 @@ Every run of an evaluation walks the same order:
 evaluation contract → probe → observation → preflight → evidence → oracle → rubric → score / verdict
 ```
 
-| Noun | What it is | Example |
-| --- | --- | --- |
-| **Evaluation contract** | What we want to measure: the behaviors, the checks, the interfaces a probe may touch, and the bounds a run stays inside. | "A PATCH that reports success has persisted the change." |
-| **Probe** | How to poke the system to produce evidence: a test case, a call, a step. In scoring, a probe also names the defect it seeded. | "Update note n-1, then read it back." |
-| **Observation** | What actually happened when the system was poked: the recorded status, headers, and body of one call. | `PATCH` returned 200 with the new title; the later `GET` returned the old one. |
-| **Preflight** | Whether the environment and the observations are fit for meaningful measurement. | Both operations reachable, the fixture reset, the clean control clean. |
-| **Evidence** | The recorded output, trajectory, and artifacts from the evaluation run: what the oracles resolve against. | A finding citing the two observations above. |
-| **Oracle** | The assertion: the relation that has to hold over the evidence. | The title sent equals the title read back. |
-| **Rubric** | The grading guide for judgment-heavy quality, with anchored criteria a judge scores against. The judge runs outside the package and its scores arrive in the sealed run record. | Present only when a contract declares one. |
-| **Score / verdict** | The combined result: did the evaluation catch the planted defect? `PASS`, `WAIVED`, `CONCERNS`, or `FAIL`, or Invalid when the run produced no verdict. | `FAIL`, exit code 2. |
+| Noun                    | What it is                                                                                                                                                                      | Example                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Evaluation contract** | What we want to measure: the behaviors, the checks, the interfaces a probe may touch, and the bounds a run stays inside.                                                        | "A PATCH that reports success has persisted the change."                       |
+| **Probe**               | How to poke the system to produce evidence: a test case, a call, a step. In scoring, a probe also names the defect it seeded.                                                   | "Update note n-1, then read it back."                                          |
+| **Observation**         | What actually happened when the system was poked: the recorded status, headers, and body of one call.                                                                           | `PATCH` returned 200 with the new title; the later `GET` returned the old one. |
+| **Preflight**           | Whether the environment and the observations are fit for meaningful measurement.                                                                                                | Both operations reachable, the fixture reset, the clean control clean.         |
+| **Evidence**            | The recorded output, trajectory, and artifacts from the evaluation run: what the oracles resolve against.                                                                       | A finding citing the two observations above.                                   |
+| **Oracle**              | The assertion: the relation that has to hold over the evidence.                                                                                                                 | The title sent equals the title read back.                                     |
+| **Rubric**              | The grading guide for judgment-heavy quality, with anchored criteria a judge scores against. The judge runs outside the package and its scores arrive in the sealed run record. | Present only when a contract declares one.                                     |
+| **Score / verdict**     | The combined result: did the evaluation catch the planted defect? `PASS`, `WAIVED`, `CONCERNS`, or `FAIL`, or Invalid when the run produced no verdict.                         | `FAIL`, exit code 2.                                                           |
 
 The word evidence is used twice on purpose. The evidence in the flow is what the evaluator produced, and it reaches `score` inside one or more sealed run records. The evidence artifact is what `score` mints at the end: the outcomes, the verdict, the strength vector, and the exit code.
 
@@ -77,13 +77,13 @@ The word evidence is used twice on purpose. The evidence in the flow is what the
 
 `eval-quality` is a Node package and a command line binary. It gives you five commands, which sit on the flow like this:
 
-| Command | Reads | Writes |
-| --- | --- | --- |
-| `compile` | an authored contract | `eval-contract.json`, checked against the schema and the discipline rules |
-| `seal` | a contract | `sealed-evaluator-brief.json`, the contract minus everything that would give the answer away |
-| `preflight` | a contract, a probe list, observations | `preflight-verdict.json`, fit or unfit to measure |
-| `score` | one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under | `evidence-artifact.json`, and the verdict's own exit code |
-| `aggregate-strength` | the per-probe evidence artifacts of one run, the declared per-class floors, and the scoring policy the run was scored under | `strength-aggregate.json`, the run-wide strength of the qualified probes per class and the decision against each floor |
+| Command              | Reads                                                                                                                                                                                                                   | Writes                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `compile`            | an authored contract                                                                                                                                                                                                    | `eval-contract.json`, checked against the schema and the discipline rules                                              |
+| `seal`               | a contract                                                                                                                                                                                                              | `sealed-evaluator-brief.json`, the contract minus everything that would give the answer away                           |
+| `preflight`          | a contract, a probe list, observations                                                                                                                                                                                  | `preflight-verdict.json`, fit or unfit to measure                                                                      |
+| `score`              | one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under | `evidence-artifact.json`, and the verdict's own exit code                                                              |
+| `aggregate-strength` | the per-probe evidence artifacts of one run, the declared per-class floors, and the scoring policy the run was scored under                                                                                             | `strength-aggregate.json`, the run-wide strength of the qualified probes per class and the decision against each floor |
 
 It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over the sealed run records. `eval-quality` compiles, seals, preflights, and scores.
 
@@ -165,15 +165,15 @@ Every command is non-interactive. Without `--out` the artifact goes to stdout, s
 
 **Exit codes.**
 
-| Exit Code | Meaning |
-| --- | --- |
-| `0` | success, and every verdict other than FAIL or a promoted CONCERNS |
-| `1` | CONCERNS promoted by `--strict` |
-| `2` | FAIL |
-| `3` | invalid: a failed pre-flight, or any other AD-21 invalidating condition |
-| `4` | structural failure, or an aggregation refused for mixed or inconsistent evidence |
-| `5` | runtime fault |
-| `64` | usage error |
+| Exit Code | Meaning                                                                          |
+| --------- | -------------------------------------------------------------------------------- |
+| `0`       | success, and every verdict other than FAIL or a promoted CONCERNS                |
+| `1`       | CONCERNS promoted by `--strict`                                                  |
+| `2`       | FAIL                                                                             |
+| `3`       | invalid: a failed pre-flight, or any other AD-21 invalidating condition          |
+| `4`       | structural failure, or an aggregation refused for mixed or inconsistent evidence |
+| `5`       | runtime fault                                                                    |
+| `64`      | usage error                                                                      |
 
 `--strict` never promotes a CONCERNS whose firing conditions are all evidence conditions: those report that the measurement fell short of the policy. Codes 1 and 2 come from `score`'s verdict ladder. Code 3 comes from a failed pre-flight, which `preflight` reports, or from any other invalidating condition `score` finds.
 
@@ -246,16 +246,16 @@ npm run test:conformance    # run the published port conformance suite over the 
 
 Several files are generated from the code and guarded byte for byte, so a hand edit fails the build. Regenerate them:
 
-| Generated | Rebuild | Guard |
-| --- | --- | --- |
-| `schemas/*.schema.json`, from the Zod source | `npm run generate:schemas` | `npm run check:schemas` |
-| `corpus/dev/`, from the contract fixtures | `npm run generate:dev-corpus` | `npm run check:corpus` |
-| `docs/ad21-verdict-decision.generated.md`, the two verdict ladders | `npm run generate:ad21-table` | `npm run check:ad21-table` |
-| `docs/ad31-coverage-predicates.generated.md`, the coverage predicates | `npm run generate:ad31-table` | `npm run check:ad31-table` |
-| `docs/ad33-outcome-decision.generated.md`, the outcome decision procedure | `npm run generate:ad33-table` | `npm run check:ad33-table` |
-| the three committed worked chains | `npm run generate:worked-example` | `npm run check:worked-example` |
-| `VERSION` in `src/index.ts`, from `package.json` | `npm run generate:version` | `npm run check:version` |
-| `_bmad-output/shareable/`, this README, CONTRIBUTING, and the planning artifacts as standalone HTML | `npm run build:shareable` | `npm run check:shareable` |
+| Generated                                                                                           | Rebuild                           | Guard                          |
+| --------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------ |
+| `schemas/*.schema.json`, from the Zod source                                                        | `npm run generate:schemas`        | `npm run check:schemas`        |
+| `corpus/dev/`, from the contract fixtures                                                           | `npm run generate:dev-corpus`     | `npm run check:corpus`         |
+| `docs/ad21-verdict-decision.generated.md`, the two verdict ladders                                  | `npm run generate:ad21-table`     | `npm run check:ad21-table`     |
+| `docs/ad31-coverage-predicates.generated.md`, the coverage predicates                               | `npm run generate:ad31-table`     | `npm run check:ad31-table`     |
+| `docs/ad33-outcome-decision.generated.md`, the outcome decision procedure                           | `npm run generate:ad33-table`     | `npm run check:ad33-table`     |
+| the three committed worked chains                                                                   | `npm run generate:worked-example` | `npm run check:worked-example` |
+| `VERSION` in `src/index.ts`, from `package.json`                                                    | `npm run generate:version`        | `npm run check:version`        |
+| `_bmad-output/shareable/`, this README, CONTRIBUTING, and the planning artifacts as standalone HTML | `npm run build:shareable`         | `npm run check:shareable`      |
 
 Every artifact the library hands back is deep-frozen. A revision is a new artifact carrying its parent's digest and a revision count one greater, and `npm run check:lineage` fails the build when a lineage field is written outside the modules that own it. `npm run check:boundary` fails it when anything the tarball carries references the planning system that produced it.
 
