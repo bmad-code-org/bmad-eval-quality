@@ -8,10 +8,10 @@ baseline_revision: '93856e2f740712867eedc6284d563cd3707f3e83'
 route: 'oneshot'
 route_source: 'auto'
 risk: 'medium'
-review: ''
-review_source: ''
-lenses_ran: []
-review_loop_iteration: 0
+review: 'thorough'
+review_source: 'pinned'
+lenses_ran: ['codex']
+review_loop_iteration: 3
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -79,7 +79,30 @@ Oneshot: the change is a release dispatch, a four-line lockfile edit in TeA and 
 
 **TeA's other files.** Only the ones above change. `CHANGELOG.md` carries the tutorial entry and none for the lock. TeA's CONTRIBUTING asks for user-facing, documentation, CI, release and bug-fix entries, and TeA's npm `files` (`skills`, `cli`, `.claude-plugin`, `README.md`, `LICENSE`) leave out `package-lock.json`, `test/` and `docs/`, so no installed byte changes for a TeA user. #519 wrote "Require eval-quality 10.1.1" because it moved the peer floor, and this change leaves the floor alone. `.lockfile-age-cache.json`: the gate reads a cached publication time and fetches what is missing, and `eval-quality.config.json` excludes `eval-quality` from `lockfile-age` by name, so the gate never asks for it. The cache has held `eval-quality@10.1.0` since #519 moved the lock to 10.1.1.
 
+**Regressions.** Every script of TeA's 190-script `npm test` chain ran on its own, so one failure does not stop the chain, after `npm ci` on each revision, with Node 24.22.3 and npm 11.19.1 on macOS. Base is `c7dfa7cfb` with eval-quality 10.1.1, and head is #530's tree `43c3d0f3` (first run as `e92c7cd8a`) with 10.1.2. A script that failed was rerun alone.
+
+| | Base | Head |
+|---|---|---|
+| First pass | 187 of 190 | 185 of 190 |
+| After serial reruns | 188 of 190 | 189 of 190 |
+| Fails after reruns | `test:evaluate-preflight`, `test:docs-tutorial` | `test:evaluate-preflight` |
+| Passes on base, fails on head | | none |
+
+`npm ci`, `test:eval-quality-corpus` and the seven gates (`test:boundary`, `test:direction`, `test:doc-claims`, `test:doc-counts`, `test:doc-invocations`, `test:lineage`, `test:lockfile-age`) pass on both. The Codex reviewer's independent run of the same chain on both revisions found 187 and 189 after its retries, with no head-only failure. Every first-pass failure that a rerun cleared has a cause outside the revision under test:
+
+- `test:evaluate-confinement-history` (base) and `test:evaluate-private` (the reviewer's base) ran while another chain ran on the same host. TeA's runs share one per-user private root, `/private/tmp/tea-evaluate-p501`, and a run reclaims what it takes for a dead run's leftovers, so two chains at once fail each other's cleanup checks. Each passes alone. TeA's CI gives each shard its own runner.
+- `test:evaluate-compare` and `test:evaluate-guidance` (head) hit `ENOSPC` while three chains and a fixture refresh shared the disk. Both pass alone.
+- `test:evaluate-guidance`, `test:evaluate-tool-use` and `test:evaluate-promptfoo` (head) failed alone too, with `[run-integrity] ... lies outside this run directory, runs/engine-refresh-86666/`. `tools/refresh-evaluate-baselines.js` moves each replaced baseline to `runs/engine-refresh-<pid>` and never deletes it. `runs/` is ignored, so the folder is never committed, but a suite that copies a fixture folder scores it. Deleting the fourteen leftover folders, all named for the refresh's pid 86666, passed all three. A fresh checkout, as in CI and the reviewer's run, never has them. The tool could delete the retired folders once its receipt is written, which is a follow-up for TeA.
+
 **No TeA release follows from this.** TeA's `publish.yaml` is a manual dispatch, and the owner has dispatched one after most merges: #497 shipped as 4.3.0 and #519 as 4.4.0, each with changes under `cli/` and `skills/`. Neither pull request changes anything TeA's npm `files` publish, so a release cut for them would publish the 4.6.1 contents under a new version. The tutorial fix reaches readers through the documentation site, which `docs.yaml` builds, and its `[Unreleased]` entry rides with the next release that does change the package.
+
+## Review Triage Log
+
+The coordinator pinned review to the Codex reviewer, round by round, with each round's file in the review folder (`14-6-review-r<N>.md`).
+
+- **Round 1, TeA `c7dfa7cfb..e92c7cd8a`: changes requested, 3.** (1) The release predates Story 14.5's merge: high, process. Closed by recording the owner's approval of the order. (2) The baseline and seal refresh against the epic's fixture boundary: high, process. Closed by recording the owner's scope amendment, limited to the re-measurement. (3) The tutorial fix should be its own pull request: medium, revertability. Patched: #531 carries it and #530 is stacked on it.
+- **Round 2, TeA `c7dfa7cfb..6b9ea8cdb`: changes requested, 1.** The rebuild of #530 force-pushed against Epic 14's "no force-push": high, process. Closed by recording the coordinator's instruction as the owner's exception, limited to #530's branch.
+- **Round 3, TeA `c7dfa7cfb..6b9ea8cdb`: approved, zero findings.**
 
 ## Verification
 
