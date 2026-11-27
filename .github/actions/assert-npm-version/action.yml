@@ -1,4 +1,4 @@
-name: 'Assert npm version'
+name: "Assert npm version"
 description: >
   Installs an exact global npm version and asserts `npm --version` prints exactly that, before any
   dependency install. Single source of truth for the pin, so pr-checks.yml and publish.yml cannot
@@ -6,11 +6,11 @@ description: >
 
 inputs:
   version:
-    description: 'Exact npm version to install and assert (no ranges).'
+    description: "Exact npm version to install and assert (no ranges)."
     required: true
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Assert npm ${{ inputs.version }}
       shell: bash

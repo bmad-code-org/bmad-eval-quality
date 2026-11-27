@@ -681,7 +681,7 @@
 				"file": "README.md",
 				"claim": "the committed end-to-end chain count",
 				"pattern": {
-					"match": "\\| the ([a-z-]+) committed worked chains \\|"
+					"match": "\\| the ([a-z-]+) committed worked chains +\\|"
 				},
 				"counts": ["committedChains"]
 			},

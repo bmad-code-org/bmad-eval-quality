@@ -238,14 +238,25 @@ describe('the digest agreement over rendered output', () => {
 		// `render.ts` claims the help output and the README carry the same seven
 		// lines. The README renders them as a markdown table and backticks the
 		// flag names, so the comparison strips backticks and goes per row: the
-		// code, then the words beside it.
+		// code, then the words beside it. The formatter pads every cell to its
+		// column's width, so a row is compared by its trimmed cells.
 		const rows = EXIT_CODE_TABLE.split('\n')
 			.map((line) => line.match(/^ {2}(\d+) {2,}(.+)$/))
 			.filter((match): match is RegExpMatchArray => match !== null)
 		expect(rows).toHaveLength(7)
-		const plain = readme.replaceAll('`', '')
+		const readmeRows = readme
+			.replaceAll('`', '')
+			.split('\n')
+			.filter((line) => line.startsWith('|') && line.endsWith('|'))
+			.map((line) =>
+				line
+					.slice(1, -1)
+					.split('|')
+					.map((cell) => cell.trim())
+					.join(' | '),
+			)
 		for (const [, code, text] of rows) {
-			expect(plain).toContain(`| ${code} | ${text} |`)
+			expect(readmeRows).toContain(`${code} | ${text}`)
 		}
 	})
 
