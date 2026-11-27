@@ -11,7 +11,7 @@ risk: 'medium'
 review: 'thorough'
 review_source: 'pinned'
 lenses_ran: ['codex']
-review_loop_iteration: 4
+review_loop_iteration: 5
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md']
 ---
 
@@ -71,7 +71,7 @@ Oneshot: the change is a release dispatch, a four-line lockfile edit in TeA and 
 
 #530 first carried all three changes on one branch as `9c11f4d61`, `e822d8d42` and `e92c7cd8a`. When the tutorial fix moved to #531, its branch was rebuilt on #531 and force-pushed with a lease. The rebuilt head's tree, `43c3d0f3`, equals the old head's.
 
-**Merging them.** TeA allows merge commits, squash and rebase. #531 merges first with a merge commit, the one method that keeps `97fa2308e` itself on `main`; a squash or a rebase gives `main` a different commit and leaves the tutorial change inside #530's diff. Before #530 merges, `git merge-base --is-ancestor 97fa2308ed8020252e8ddd918afb0fdb0f3b045f origin/main` exits 0, and `gh pr diff 530 --name-only` names only `package-lock.json`, `test/evaluate-baseline-refresh.json`, `test/fixtures/evaluate-engine-seals/manifest.json` and the re-measured `baseline/` folders.
+**Merging them.** TeA allows merge commits, squash and rebase. #531 merges first with a merge commit, the one method that keeps `97fa2308e` itself on `main`; a squash or a rebase gives `main` a different commit and leaves the tutorial change inside #530's diff. Before #530 merges, in a TeA checkout after `git fetch origin`, `git merge-base --is-ancestor 97fa2308ed8020252e8ddd918afb0fdb0f3b045f origin/main` exits 0, and `gh api --paginate 'repos/bmad-code-org/bmad-method-test-architecture-enterprise/pulls/530/files?per_page=100' --jq '.[].filename'` names only `package-lock.json`, `test/evaluate-baseline-refresh.json`, `test/fixtures/evaluate-engine-seals/manifest.json` and the re-measured `baseline/` folders. `gh pr diff` cannot serve this check: GitHub refuses a pull request diff above 300 files (HTTP 406, `too_large`), and #530 changes 303.
 
 **The engine version reaches TeA's fixtures.** On the lock-only commit `9c11f4d611d92657fffd22f5d50984bc066c88a5` the chain failed 24 scripts. Two are the macOS failures below, which fail on base too. The other 22 refuse the engine version, each with the first diagnostic its log shows:
 
@@ -120,6 +120,7 @@ The coordinator pinned review to the Codex reviewer, round by round, with each r
 - **Round 2, TeA `c7dfa7cfb..6b9ea8cdb`: changes requested, 1.** The rebuild of #530 force-pushed against Epic 14's "no force-push": high, process. Closed by recording the coordinator's instruction as the owner's exception, limited to #530's branch.
 - **Round 3, TeA `c7dfa7cfb..6b9ea8cdb`: approved, zero findings.**
 - **Round 4, eval-quality `74f9292..dc18f3e`: changes requested, 6, all in this record.** (1) Verification told a reader to dispatch another release: medium. Patched to read back run 45888028402, with both TeA revisions pinned. (2) The merge order lacked the method that keeps `97fa2308e` on TeA's `main`: medium. Patched with the merge-commit requirement and the ancestry and diff checks. (3) The lock-only failures were over-generalised: low. Patched with the 22 scripts and their diagnostics, and `test:evaluate-ci-render` passing. (4) The hosted checks were missing, and the Ubuntu statement was too broad: low. Patched with both runs and the Windows job. (5) The reviewer's base `test:evaluate-private` failure carried an unproven cause: low. Patched as an open, intermittent, base-only failure. (6) The member check omitted the pack of `93856e2`: low. Patched with that comparison.
+- **Round 5, eval-quality `10eba24..9d2b89b`: changes requested, 1.** The pre-merge `gh pr diff 530 --name-only` fails with HTTP 406 above 300 files: medium. Patched to the paginated files API, with the ancestry check run after a fetch.
 
 ## Verification
 
