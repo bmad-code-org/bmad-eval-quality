@@ -1,4 +1,10 @@
-// Starlight exposes component overrides at runtime; its public types omit these modules.
+// Starlight exposes its resolved config and component overrides at runtime; its public types omit
+// these modules.
+declare module 'virtual:starlight/user-config' {
+	const Config: import('@astrojs/starlight/types').StarlightConfig
+	export default Config
+}
+
 declare module 'virtual:starlight/components/Search' {
 	const Component: typeof import('@astrojs/starlight/components/Search.astro').default
 	export default Component
