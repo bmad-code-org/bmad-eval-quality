@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [10.1.3] - 2026-11-27
+
 ### Changed
 
 - Updated the Zod runtime dependency from 4.6.6 to 4.6.7. Published schemas, the corpus, and every artifact stay byte-identical.
