@@ -181,6 +181,7 @@ Still out of scope after Epic 11: the `web` kind, which keeps failing under `uns
 - Epic 12: the exports a downstream consumer reads (5 stories)
 - Epic 13: the gates a consumer can run (3 stories; 13.2 and 13.3 are specified in their story files)
 - Epic 14: a lighter repository and a shorter path to the proof (7 stories)
+- Epic 15: a gameability probe's claim is checked (1 story)
 
 ## Epic 1: Zod schemas and the published JSON Schema export
 
@@ -1503,3 +1504,35 @@ Follows Story 14.5 and reuses its graded folders: the three valid clean outputs,
 **Given** the owner reports to Toolsmith's maintainer,
 **When** the record is finished,
 **Then** it ends with three or four plain sentences the owner can add to that note, drafted and never sent.
+
+## Epic 15: a gameability probe's claim is checked
+
+A gameability probe says that a degenerate response satisfies a naive oracle and a disciplined oracle rejects it. Today `score` qualifies the probe from its declared `degenerateResponse` prose and the two `ArtifactReference`s in `probe-qualification.ts`; nothing resolves either oracle against that response. Story 14.7 met the consequence: probe `P-006`, an empty shard list, qualified although both of its oracles resolved `insufficient-evidence`, so the probe claimed a pair it never showed.
+
+**Definition of done.** A gameability probe qualifies only when the engine has resolved its naive oracle to held and its disciplined oracle to not held over the same degenerate response, and a probe whose pair does not hold is refused with a stable code.
+
+**What this epic may not do.** No weaker check for the other probe classes. No model call. Any change to qualification that can refuse a contract which qualifies today ships as a major release with a migration note, and TeA's corpus is re-run against it before release.
+
+### Story 15.1: A gameability probe qualifies only when its pair holds
+
+As a contract author,
+I want a gameability probe refused when its naive oracle does not hold or its disciplined oracle does not fail on the degenerate response,
+So that a qualified gameability probe means the shortcut it names was shown to work and then to be caught.
+
+**Acceptance Criteria:**
+
+**Given** a gameability probe whose degenerate response is available to the collector,
+**When** `score` qualifies it,
+**Then** the engine resolves the naive oracle and the disciplined oracle over that response, and the probe qualifies only when the first holds and the second does not.
+
+**Given** either oracle resolves `insufficient-evidence`,
+**When** the probe is qualified,
+**Then** it is refused with a stable code that names the oracle, and the refusal appears in the score output.
+
+**Given** Story 14.7's Tidewater contract,
+**When** it is scored again,
+**Then** `P-004` and `P-005`, the title stub, still qualify, and `P-006`, the empty list, is refused.
+
+**Given** the change can refuse a contract that qualifies today,
+**When** it ships,
+**Then** the release is major, the changelog carries a migration note, and TeA's `test:eval-quality-corpus` and seven gates pass against the candidate before release.
