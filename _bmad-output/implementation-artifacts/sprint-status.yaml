@@ -139,12 +139,12 @@ development_status:
   13-2-a-licence-read-by-evidence-and-an-age-exclusion-by-name: review
   13-3-publish-check-resolution-and-fix-the-require-shorthand: review
 
-  epic-14: in-progress
+  epic-14: done
   14-1-the-skill-tutorial-shows-its-result-first: done
   14-2-the-readme-maps-the-seven-rules-to-a-prose-skill: done
   14-3-the-story-records-of-finished-epics-leave-the-checkout: done
-  14-4-whether-the-shard-pro-script-runs-inside-the-eval-room: review
-  14-5-a-planted-defect-caught-for-the-reason-it-was-planted: review
-  14-6-tea-runs-on-the-new-eval-quality-release: review
-  14-7-the-tidewater-case-and-defect-through-eval-quality: review
+  14-4-whether-the-shard-pro-script-runs-inside-the-eval-room: done
+  14-5-a-planted-defect-caught-for-the-reason-it-was-planted: done
+  14-6-tea-runs-on-the-new-eval-quality-release: done
+  14-7-the-tidewater-case-and-defect-through-eval-quality: done
   epic-14-retrospective: optional
