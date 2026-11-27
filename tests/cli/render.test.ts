@@ -239,20 +239,21 @@ describe('the digest agreement over rendered output', () => {
 		// lines. The README renders them as a markdown table and backticks the
 		// flag names, so the comparison strips backticks and goes per row: the
 		// code, then the words beside it. The formatter pads every cell to its
-		// column's width, so a row is compared by its trimmed cells.
+		// column's width, so a row is compared by its trimmed cells. Each cell is
+		// trimmed before its backticks go, so whitespace written inside a code
+		// span, which renders, still fails the comparison.
 		const rows = EXIT_CODE_TABLE.split('\n')
 			.map((line) => line.match(/^ {2}(\d+) {2,}(.+)$/))
 			.filter((match): match is RegExpMatchArray => match !== null)
 		expect(rows).toHaveLength(7)
 		const readmeRows = readme
-			.replaceAll('`', '')
 			.split('\n')
 			.filter((line) => line.startsWith('|') && line.endsWith('|'))
 			.map((line) =>
 				line
 					.slice(1, -1)
 					.split('|')
-					.map((cell) => cell.trim())
+					.map((cell) => cell.trim().replaceAll('`', ''))
 					.join(' | '),
 			)
 		for (const [, code, text] of rows) {
