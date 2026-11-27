@@ -180,7 +180,7 @@ Still out of scope after Epic 11: the `web` kind, which keeps failing under `uns
 - Epic 11: the fifth interface kind, the evidence for the other four, and the documentation that describes them (13 stories) — v1
 - Epic 12: the exports a downstream consumer reads (5 stories)
 - Epic 13: the gates a consumer can run (3 stories; 13.2 and 13.3 are specified in their story files)
-- Epic 14: a lighter repository and a shorter path to the proof (6 stories)
+- Epic 14: a lighter repository and a shorter path to the proof (7 stories)
 
 ## Epic 1: Zod schemas and the published JSON Schema export
 
@@ -1242,15 +1242,15 @@ The split is by dependency rather than by size, which is the only basis on which
 
 ## Epic 14: a lighter repository and a shorter path to the proof
 
-`eval-quality` stays TeA Evaluate's evidence and scoring engine, and core BMAD can use either this package or Toolsmith's `bmad-eval`. This epic makes three independent changes around the engine and then moves TeA onto the release that carries them: the skill tutorial shows its result before its stage internals, the story records of finished epics leave the checkout, and the existing Tidewater case in Shard Pro's evals is used to determine whether its native rubric catches a planted defect.
+`eval-quality` stays TeA Evaluate's evidence and scoring engine, and core BMAD can use either this package or Toolsmith's `bmad-eval`. This epic makes three independent changes around the engine and then moves TeA onto the release that carries them: the skill tutorial shows its result before its stage internals, the story records of finished epics leave the checkout, and the existing Tidewater case in Shard Pro's evals is used to determine whether its native rubric catches a planted defect. The same case and defect then go through eval-quality, so the two tools can be compared on one case.
 
 **Why this epic exists.** At `65b24b5` the repository tracks 14,674,628 bytes. `src/` is 1,346,812 of them and `_bmad-output/` is 6,681,391. A reader of `docs/how-to/evaluate-skill-behavior.md` meets run-record fields, probe classification and isolation-manifest detail before the two-row result those stages produce. This repository holds no test of the claim it rests on, that a green evaluation proves nothing until it fails on broken output, against a case written in Toolsmith's eval format.
 
-**Definition of done.** A reader sees the tutorial's result first and reproduces it into a fresh, empty output directory. The story records of Epics 1 to 11 are out of the checkout and remain in history. The Tidewater case has a recorded answer to whether its rubric catches a planted defect, with every counted trial held to a stated validity test. TeA's lockfile pins the eval-quality release that carries this epic.
+**Definition of done.** A reader sees the tutorial's result first and reproduces it into a fresh, empty output directory. The story records of Epics 1 to 11 are out of the checkout and remain in history. The Tidewater case has a recorded answer to whether its rubric catches a planted defect, with every counted trial held to a stated validity test, and a recorded side-by-side reading of the same case and defect through eval-quality. TeA's lockfile pins the eval-quality release that carries this epic.
 
 **What this epic may not do.** No change to the public package API, the command line and its exit codes, the generated schemas, the adapters, the conformance surface, the published corpus or any verdict. No gate is weakened or reconfigured to let a change pass. No change to TeA's fixtures, baselines, scoring policy or release wiring. No history rewrite and no force-push. No claim of a smaller installation: the archive is a checkout measure. Nothing is sent to another repository without the repository owner's decision.
 
-**Order and independence.** Each story is its own pull request. Stories 14.1 and 14.2 go first and Story 14.3 follows them. Story 14.4 costs no model spend and can start at any time. Story 14.5 follows a passing Story 14.4 preflight. Story 14.6 starts after Stories 14.1 to 14.5 merge. Anything sent to BMAD-METHOD comes after this epic; the owner decides its content from the evidence of Stories 14.4 and 14.5. Each pull request reverts on its own.
+**Order and independence.** Each story is its own pull request. Stories 14.1 and 14.2 go first and Story 14.3 follows them. Story 14.4 costs no model spend and can start at any time. Story 14.5 follows a passing Story 14.4 preflight. Story 14.6 starts after Stories 14.1 to 14.5 merge. Story 14.7 follows Story 14.5, reuses its graded outputs, makes no model call and is independent of Story 14.6. Anything sent to BMAD-METHOD comes after this epic; the owner decides its content from the evidence of Stories 14.4 and 14.5. Each pull request reverts on its own.
 
 **The package and TeA check, used by Stories 14.2 and 14.3.** Build and pack the pull request's base and head with the same locked tools, then compare sorted member paths, modes and content hashes. Zero member differences ends the check, because TeA would install the same package. When a member differs, the candidate is tested against TeA. TeA's lockfile pins `eval-quality` 10.1.1, and its corpus gate requires the literal `latest` in its manifest and compares the installed version with the lock. So the baseline is `npm ci` in a disposable TeA checkout, and the packed candidate is installed there without being saved as a dependency. `package.json` and `package-lock.json` must still match `c7dfa7cfb`, and the installed members must match the tarball, before `npm run test:eval-quality-corpus` and the seven gate scripts (`test:boundary`, `test:direction`, `test:doc-claims`, `test:doc-counts`, `test:doc-invocations`, `test:lineage`, `test:lockfile-age`) are run. A difference in any engine member blocks the pull request until it is explained.
 
@@ -1469,3 +1469,37 @@ Starts after Stories 14.1 to 14.5 merge. The release is cut from this repository
 **Given** the refreshed lockfile,
 **When** `npm ci`, `npm run test:eval-quality-corpus`, the seven gate scripts and TeA's pull request checks run,
 **Then** all pass with no change to TeA's fixtures, baselines, scoring policy or release wiring.
+
+### Story 14.7: The Tidewater case and defect through eval-quality
+
+As the repository owner comparing two evaluation tools on one case,
+I want Story 14.5's Tidewater case and planted defect written as an eval-quality contract and scored on the same graded outputs,
+So that the two tools can be read side by side on what each caught, what each needed from a model and what each cost to author.
+
+Follows Story 14.5 and reuses its graded folders: the three valid clean outputs, `g01` to `g03`, and the poisoned copy `g04`, which is `g01` with fixture line 2533 deleted from its shard and the reply's bullet about its own passing check removed. It needs no new agent run. Its raw evidence stays in the epic's local evidence folder, and the committed record uses placeholders and no absolute path. It changes no file in `src/`, the schemas, the CLI or any gate, and nothing in BMAD-METHOD.
+
+**Acceptance Criteria:**
+
+**Given** the four `tidewater-prd` rubric lines and the line Story 14.5 proposed,
+**When** they are written as an eval-quality contract in the form `docs/how-to/evaluate-skill-behavior.md` uses for a skill,
+**Then** the contract compiles, and the record gives its size and every declaration the case required: interface, operation, channels, artifacts, oracles, probes, observations, and whatever the harness had to build for the record.
+
+**Given** rubric line 1 accepts "the original kept intact somewhere", which a kept `.source/` copy satisfies,
+**When** `compile` and `preflight` run before any scored run,
+**Then** the record says plainly, yes or no, whether either flags that weak acceptance, and names the mechanism that does or the reason none can, such as a gameability probe whose degenerate answer keeps only `.source/`.
+
+**Given** the graded folders,
+**When** `score` runs on each,
+**Then** the record says whether `g01`, `g02` and `g03` pass and `g04` fails, whether any model call was made, and, for every check that needs a judge, which check and why.
+
+**Given** Story 14.5's grades of the same folders,
+**When** the two tools are compared,
+**Then** a side-by-side table gives what each caught, the model calls each needed and the authoring effort, without overclaiming for either, and anything eval-quality cannot express is recorded.
+
+**Given** an eval-quality defect may surface,
+**When** one does,
+**Then** it is recorded in `deferred-work.md` and reported to the coordinator, and no file in `src/`, the schemas, the CLI or a gate changes.
+
+**Given** the owner reports to Toolsmith's maintainer,
+**When** the record is finished,
+**Then** it ends with three or four plain sentences the owner can add to that note, drafted and never sent.
